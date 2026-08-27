@@ -26,7 +26,26 @@
 
 ## 🚀 Registro Cronológico de Versiones & Mejoras
 
-### 🌟 Versión 4.8 (Actual) — Simulación Inteligente con A* Pathfinding & Customer Journey Lógico
+### 🌟 Versión 4.9 (Actual) — Flagship CAD Studio UI Polish & Rediseño Visual Integral
+* **🎛️ Barra de Herramientas Superior Estandarizada (Figma & Linear Style):**
+  * **Eliminación del Ruido Visual & Colores Arcoíris:** Se reemplazaron 17 botones de colores saturados desalineados por una barra de herramientas unificada, organizada en clusters semánticos con divisores verticales sutiles y altura constante ($48\text{px}$).
+  * **Control Segmentado de Modos:** Selector integrado `[ 📐 2D Plano | 🎮 3D Realista ]` con transición fluida.
+  * **Acción Primaria de Simulación:** Botón destacado en gradiente índigo/púrpura con punto de pulso animado en vivo (`🚶‍♂️ Simular Clientes`).
+  * **Botones de Diagnóstico con Indicador Iluminado:** `🚦 Pasillos`, `🔥 Mapa Calor`, `📏 Cotas`, `🧲 Simetría`, `🏗️ Perímetro` cuentan con un led luminoso cyan que indica el estado activo/inactivo sin saturar el fondo.
+  * **Menú Desplegable Compacto de Exportación:** Agrupación elegante de exportadores en un solo botón `📥 Exportar ▾` con popover descriptivo para AutoCAD `.dxf`, Vectorial `.svg` e Imagen HD `.png`.
+* **📐 Barra de Estado & Navegación Flotante en el Lienzo 2D:**
+  * **Píldora Dockeada de Estado (Inferior Izquierda):** Indicador minimalista con desenfoque de cristal (`backdrop-filter: blur(14px)`), escala $1:50$ y atajos en chips `<kbd>` (<kbd>Shift+Clic</kbd>, <kbd>Ctrl+Z</kbd>, <kbd>R</kbd>).
+  * **Controles Flotantes de Navegación 2D (Inferior Derecha):** Mini-píldora con `[ 🔍＋ | 100% | 🔍－ | 🎯 Centrar ]` para acercar, alejar y centrar el plano en pantalla.
+* **📊 Panel Lateral Derecho Rediseñado (Propiedades, Auditoría & KPIs):**
+  * **Tarjeta Colapsable de Atajos:** Caja moderna estilizada con chips `<kbd>` y chevron interactivo.
+  * **Auditoría de Pasillos con Barra de Distribución Multinivel:** Barra de progreso tricolor en tiempo real (🟢 Óptimos $>1.2\text{m}$, 🟡 Ajustados $0.9-1.2\text{m}$, 🔴 Críticos $<0.9\text{m}$) y semáforo con badge de estado.
+  * **Métricas KPI Modernizadas:** Tarjetas limpias de superficie total ($115.64\text{ m}^2$), metros lineales de frío ($9.67\text{m}$) y metros lineales de seco ($20.16\text{m}$).
+* **🎨 Paleta de Color & Compatibilidad Total Dark/Light:**
+  * Paleta *Deep Slate* (`#080c14`, `#0d131f`, `#131b2e`, `#1e293b`) en modo oscuro y *Clean Slate* (`#f1f5f9`, `#ffffff`, `#e2e8f0`) en modo claro. Cumplimiento 100% WCAG AA en contraste tipográfico.
+
+---
+
+### 🌟 Versión 4.8 — Simulación Inteligente con A* Pathfinding & Customer Journey Lógico
 * **🧭 Navegación A\* sobre Malla de Obstáculos Dinámica (NavGrid):**
   * **Cero Atravesamiento de Muebles:** Matriz de navegación espacial de alta resolución ($12\text{px}$) que rasteriza automáticamente góndolas, murales, cámaras, islas, cajas y muros con un margen de seguridad perimetral ($11\text{px}$).
   * **Suavizado de Trayectorias (String-Pulling & Raycasting):** Convierte escalones de cuadrícula en líneas de marcha directas y fluidas a través de los pasillos abiertos.
