@@ -1,0 +1,19 @@
+{
+  "name": "retail-cad-pro",
+  "version": "4.8.0",
+  "description": "Retail CAD Pro - Suite 4.0 de Diseno 2D y 3D para Supermercados",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "retail",
+    "cad",
+    "supermarket",
+    "threejs",
+    "planogram"
+  ],
+  "author": "sanguti95-blip",
+  "license": "MIT"
+}

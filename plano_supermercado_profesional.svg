@@ -1,0 +1,538 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600" width="100%" height="100%" style="background:#0f172a; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;">
+  <defs>
+    <!-- Filters -->
+    <filter id="shadow" x="-5%" y="-5%" width="115%" height="115%">
+      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.35" />
+    </filter>
+    <filter id="glow-heat" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="15" result="blur" />
+    </filter>
+
+    <!-- Gradients for Real Materials -->
+    <linearGradient id="cold-metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="50%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+    <linearGradient id="freeze-ice" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="dry-wood" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+    <linearGradient id="header-orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#c2410c"/>
+    </linearGradient>
+    <linearGradient id="checkout-gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="green-grains" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#15803d"/>
+    </linearGradient>
+
+    <!-- Grid Pattern (100 px = 1.00 m => 1 px = 1 cm) -->
+    <pattern id="grid-10cm" width="10" height="10" patternUnits="userSpaceOnUse">
+      <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+    </pattern>
+    <pattern id="grid-1m" width="100" height="100" patternUnits="userSpaceOnUse">
+      <rect width="100" height="100" fill="url(#grid-10cm)" />
+      <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#334155" stroke-width="1.2"/>
+    </pattern>
+
+    <!-- Arrow Markers -->
+    <marker id="dim-arrow-start" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 8 2 L 2 5 L 8 8" fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+    </marker>
+    <marker id="dim-arrow-end" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 2 2 L 8 5 L 2 8" fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+    </marker>
+    <marker id="flow-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#38bdf8"/>
+    </marker>
+  </defs>
+
+  <style>
+    .title { font-size: 26px; font-weight: 900; fill: #f8fafc; letter-spacing: 0.5px; }
+    .subtitle { font-size: 13px; font-weight: 500; fill: #94a3b8; }
+    .scale-info { font-size: 13px; font-weight: 700; fill: #38bdf8; text-anchor: end; }
+    .wall { stroke: #e2e8f0; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+    .door-opening { stroke: #38bdf8; stroke-width: 3; stroke-dasharray: 6 3; fill: none; }
+    .dim-line { stroke: #38bdf8; stroke-width: 1.2; stroke-dasharray: 2 2; }
+    .dim-text { font-size: 12px; font-weight: 800; fill: #38bdf8; text-anchor: middle; font-family: monospace; }
+    .item-title { font-size: 11px; font-weight: 800; text-anchor: middle; fill: #0f172a; }
+    .item-dim { font-size: 10px; font-weight: 700; text-anchor: middle; fill: #334155; font-family: monospace; }
+    .badge-tag { font-size: 9px; font-weight: 800; fill: #ffffff; text-anchor: middle; }
+    .legend-title { font-size: 14px; font-weight: 800; fill: #f8fafc; }
+    .legend-text { font-size: 11.5px; font-weight: 600; fill: #cbd5e1; }
+    .legend-dim { font-size: 10.5px; font-weight: 500; fill: #94a3b8; font-family: monospace; }
+  </style>
+
+  <!-- BACKGROUND GRID (ESCALA: 100px = 1.00 METRO REAL) -->
+  <rect width="1200" height="1600" fill="#0f172a"/>
+  <rect x="50" y="100" width="1100" height="1220" fill="url(#grid-1m)" />
+
+  <!-- HEADER -->
+  <g transform="translate(60, 45)">
+    <text x="0" y="24" class="title">PLANO ARQUITECTÓNICO CON MEDIDAS REALES (CAD)</text>
+    <text x="0" y="44" class="subtitle">Supermercado &amp; Retail Layout • Escala Métrica Real (1m = 100px) • Dimensiones Exactas</text>
+    <text x="1080" y="24" class="scale-info">ESCALA 1:50 (1m = 100px)</text>
+    <text x="1080" y="44" class="subtitle" style="text-anchor:end; fill:#38bdf8;">Precisión Milimétrica</text>
+  </g>
+
+  <!-- STORE DRAWING CONTAINER (Origin at 100, 120) -->
+  <!-- Interior Dimensions: Width = 9.80 m (980 px), Height = 11.80 m (1180 px) -->
+  <g id="main-plan" transform="translate(110, 120)">
+
+    <!-- EXTERIOR WALLS & ENTRANCES -->
+    <g id="walls-doors">
+      <!-- Perimeter Wall (9.80m x 11.80m) -->
+      <rect x="0" y="0" width="980" height="1180" fill="none" stroke="#334155" stroke-width="12" rx="4" />
+      
+      <!-- Top Wall Entrances (Entradas 1, 2, 3, 4) -->
+      <!-- Entrada 1 (Ancho 1.00m) -->
+      <line x1="20" y1="0" x2="120" y2="0" stroke="#0f172a" stroke-width="14" />
+      <path d="M 20 0 Q 70 -30 120 0" class="door-opening" />
+      <rect x="25" y="-12" width="90" height="16" rx="4" fill="#0284c7" />
+      <text x="70" y="0" class="badge-tag">ENTRADA 1</text>
+
+      <!-- Entrada 2 (Ancho 1.00m) -->
+      <line x1="180" y1="0" x2="280" y2="0" stroke="#0f172a" stroke-width="14" />
+      <path d="M 180 0 Q 230 -30 280 0" class="door-opening" />
+      <rect x="185" y="-12" width="90" height="16" rx="4" fill="#0284c7" />
+      <text x="230" y="0" class="badge-tag">ENTRADA 2</text>
+
+      <!-- Entrada 3 (Salida Cajas / Acceso Principal 1.40m) -->
+      <line x1="390" y1="0" x2="530" y2="0" stroke="#0f172a" stroke-width="14" />
+      <path d="M 390 0 Q 460 -35 530 0" class="door-opening" />
+      <rect x="395" y="-12" width="130" height="16" rx="4" fill="#0284c7" />
+      <text x="460" y="0" class="badge-tag">ENTRADA 3 (PRINCIPAL)</text>
+
+      <!-- Entrada 4 (Salida 1.20m) -->
+      <line x1="650" y1="0" x2="770" y2="0" stroke="#0f172a" stroke-width="14" />
+      <path d="M 650 0 Q 710 -30 770 0" class="door-opening" />
+      <rect x="655" y="-12" width="110" height="16" rx="4" fill="#0284c7" />
+      <text x="710" y="0" class="badge-tag">ENTRADA 4</text>
+
+      <!-- Lateral Doors (Cuarto Proceso, Bodega, Comedor) -->
+      <!-- Cuarto de Proceso (Pared Derecha) -->
+      <line x1="980" y1="280" x2="980" y2="380" stroke="#0f172a" stroke-width="14" />
+      <rect x="980" y="280" width="70" height="100" fill="#1e293b" stroke="#38bdf8" stroke-width="2" />
+      <text x="1015" y="325" font-size="10" font-weight="800" fill="#38bdf8" text-anchor="middle" style="writing-mode: tb;">CUARTO PROCESO</text>
+
+      <!-- Bodega (Inferior Izquierda) -->
+      <line x1="160" y1="1180" x2="260" y2="1180" stroke="#0f172a" stroke-width="14" />
+      <text x="210" y="1170" font-size="11" font-weight="800" fill="#94a3b8" text-anchor="middle">🚪 BODEGA</text>
+
+      <!-- Comedor (Inferior Derecha) -->
+      <line x1="750" y1="1180" x2="850" y2="1180" stroke="#0f172a" stroke-width="14" />
+      <text x="800" y="1170" font-size="11" font-weight="800" fill="#94a3b8" text-anchor="middle">🚪 COMEDOR</text>
+    </g>
+
+    <!-- 1. PARED IZQUIERDA: CÁMARAS DE FRÍO & COCHES -->
+    <!-- Dim: Cámara Frío 7.37m x 0.90m (737px x 90px) | Cámaras Pequeñas 0.55m x 0.63m (55px x 63px) -->
+    <g id="zona-frio-izquierda" filter="url(#shadow)">
+      
+      <!-- Zona Coches / Carritos (Ancho 0.90m x Fondo 1.20m) -->
+      <g transform="translate(10, 15)">
+        <rect width="90" height="120" rx="4" fill="#1e293b" stroke="#64748b" stroke-width="2" stroke-dasharray="4 2"/>
+        <text x="45" y="55" class="badge-tag" fill="#94a3b8" font-size="11">🛒 COCHES</text>
+        <text x="45" y="75" font-size="9" fill="#64748b" text-anchor="middle">0.90 × 1.20 m</text>
+      </g>
+
+      <!-- Cámara Pequeña 1 (Ancho 0.55m x Fondo 0.63m x Alto 1.30m) -->
+      <g transform="translate(10, 145)">
+        <rect width="63" height="55" rx="3" fill="#bae6fd" stroke="#0284c7" stroke-width="2"/>
+        <text x="31.5" y="24" class="item-title" font-size="8.5">CÁM. PEQ 1</text>
+        <text x="31.5" y="38" class="item-dim" font-size="8">55×63cm</text>
+        <text x="31.5" y="49" font-size="7.5" fill="#0369a1" text-anchor="middle" font-weight="700">H:1.30m</text>
+      </g>
+
+      <!-- Cámara Pequeña 2 (Ancho 0.55m x Fondo 0.63m x Alto 1.30m) -->
+      <g transform="translate(10, 205)">
+        <rect width="63" height="55" rx="3" fill="#bae6fd" stroke="#0284c7" stroke-width="2"/>
+        <text x="31.5" y="24" class="item-title" font-size="8.5">CÁM. PEQ 2</text>
+        <text x="31.5" y="38" class="item-dim" font-size="8">55×63cm</text>
+        <text x="31.5" y="49" font-size="7.5" fill="#0369a1" text-anchor="middle" font-weight="700">H:1.30m</text>
+      </g>
+
+      <!-- Cámara 2 Puertas Superior (1.10m x 0.90m) -->
+      <g transform="translate(10, 265)">
+        <rect width="90" height="110" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+        <line x1="0" y1="55" x2="90" y2="55" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <text x="45" y="45" class="item-title" font-size="9">CÁMARA</text>
+        <text x="45" y="58" class="item-title" font-size="9">2 PUERTAS</text>
+        <text x="45" y="75" class="item-dim" font-size="8.5">0.90 × 1.10 m</text>
+      </g>
+
+      <!-- CÁMARA FRÍO PRINCIPAL (7.37m x 0.90m • Alto Útil: 1.70m) -->
+      <!-- Escala: 90px ancho x 737px alto -->
+      <g transform="translate(10, 385)">
+        <rect width="90" height="737" rx="6" fill="url(#cold-metal)" stroke="#38bdf8" stroke-width="2.5"/>
+        <!-- Shelving & Glass Door Divisions (aprox 7 puertas de 1.05m c/u) -->
+        <line x1="0" y1="105" x2="90" y2="105" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.6"/>
+        <line x1="0" y1="210" x2="90" y2="210" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.6"/>
+        <line x1="0" y1="315" x2="90" y2="315" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.6"/>
+        <line x1="0" y1="420" x2="90" y2="420" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.6"/>
+        <line x1="0" y1="525" x2="90" y2="525" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.6"/>
+        <line x1="0" y1="630" x2="90" y2="630" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.6"/>
+
+        <!-- Text Label rotated -->
+        <g transform="translate(45, 368) rotate(-90)">
+          <text x="0" y="-8" font-size="16" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="3">❄ CÁMARA DE FRÍO MURAL</text>
+          <text x="0" y="12" class="item-dim" fill="#f0f9ff" font-size="13">LARGO: 7.37 m × FONDO: 0.90 m</text>
+          <text x="0" y="28" font-size="11" font-weight="700" fill="#bae6fd" text-anchor="middle">Altura Espacio Producto: 1.70 m</text>
+        </g>
+
+        <!-- Dimension Indicator on Left -->
+        <line x1="-15" y1="0" x2="-15" y2="737" stroke="#38bdf8" stroke-width="1.5" marker-start="url(#dim-arrow-start)" marker-end="url(#dim-arrow-end)"/>
+        <g transform="translate(-25, 368) rotate(-90)">
+          <text x="0" y="0" class="dim-text" font-size="13">7.37 METROS</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- 2. PARED DERECHA: MUEBLE SECO GRANDE (7.70m x 0.95m), CONGELADOR & CAJA 03 -->
+    <g id="zona-derecha" filter="url(#shadow)">
+      
+      <!-- CÁMARA CONGELADOR (1.00m x 0.95m • -18°C) -->
+      <g transform="translate(875, 15)">
+        <rect width="95" height="100" rx="4" fill="url(#freeze-ice)" stroke="#38bdf8" stroke-width="2"/>
+        <text x="47.5" y="38" class="badge-tag" font-size="11">🧊 CÁMARA</text>
+        <text x="47.5" y="54" class="badge-tag" font-size="11">CONGELA</text>
+        <text x="47.5" y="74" class="item-dim" fill="#ffffff" font-size="9">0.95 × 1.00 m</text>
+        <text x="47.5" y="88" font-size="8" fill="#e0f2fe" text-anchor="middle" font-weight="700">-18°C</text>
+      </g>
+
+      <!-- CAJA 03 (CAJA RÁPIDA / EXPRESS 0.95m x 1.40m) -->
+      <g transform="translate(875, 125)">
+        <rect width="95" height="140" rx="4" fill="url(#checkout-gold)" stroke="#b45309" stroke-width="2"/>
+        <rect x="8" y="8" width="79" height="30" rx="2" fill="#fef08a" />
+        <rect x="25" y="12" width="45" height="15" rx="2" fill="#1e293b" />
+        <text x="47.5" y="65" class="item-title" font-size="12" fill="#78350f">CAJA 03</text>
+        <text x="47.5" y="80" class="badge-tag" fill="#92400e" font-size="9.5">⚡ CAJA RÁPIDA</text>
+        <text x="47.5" y="105" class="item-dim" font-size="9" fill="#78350f">0.95 × 1.40 m</text>
+      </g>
+
+      <!-- MUEBLE SECO GRANDE DE LA DERECHA (7.70m x 0.95m • Muebles 9 al 14) -->
+      <!-- Escala: 95px ancho x 770px alto (Alto en boceto = 95 cm de profundidad) -->
+      <g transform="translate(875, 385)">
+        <rect width="95" height="770" rx="6" fill="#ffffff" stroke="#475569" stroke-width="2.5"/>
+        
+        <!-- 6 Módulos continuos (Mueble 9 al 14, aprox 1.28m c/u) -->
+        <!-- Mueble 9 -->
+        <rect x="0" y="0" width="95" height="128" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+        <text x="47.5" y="45" class="item-title" font-size="11">MUEBLE 9</text>
+        <text x="47.5" y="62" font-size="9" fill="#64748b" text-anchor="middle">Panadería</text>
+        <text x="47.5" y="78" class="item-dim" font-size="8.5">1.28×0.95m</text>
+
+        <!-- Mueble 10 -->
+        <rect x="0" y="128" width="95" height="128" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+        <text x="47.5" y="173" class="item-title" font-size="11">MUEBLE 10</text>
+        <text x="47.5" y="190" font-size="9" fill="#64748b" text-anchor="middle">Café / Té</text>
+        <text x="47.5" y="206" class="item-dim" font-size="8.5">1.28×0.95m</text>
+
+        <!-- Mueble 11 -->
+        <rect x="0" y="256" width="95" height="128" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+        <text x="47.5" y="301" class="item-title" font-size="11">MUEBLE 11</text>
+        <text x="47.5" y="318" font-size="9" fill="#64748b" text-anchor="middle">Especias</text>
+        <text x="47.5" y="334" class="item-dim" font-size="8.5">1.28×0.95m</text>
+
+        <!-- Mueble 12 -->
+        <rect x="0" y="384" width="95" height="128" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+        <text x="47.5" y="429" class="item-title" font-size="11">MUEBLE 12</text>
+        <text x="47.5" y="446" font-size="9" fill="#64748b" text-anchor="middle">Salsas / Enlat.</text>
+        <text x="47.5" y="462" class="item-dim" font-size="8.5">1.28×0.95m</text>
+
+        <!-- Mueble 13 -->
+        <rect x="0" y="512" width="95" height="128" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+        <text x="47.5" y="557" class="item-title" font-size="11">MUEBLE 13</text>
+        <text x="47.5" y="574" font-size="9" fill="#64748b" text-anchor="middle">Limpieza</text>
+        <text x="47.5" y="590" class="item-dim" font-size="8.5">1.28×0.95m</text>
+
+        <!-- Mueble 14 -->
+        <rect x="0" y="640" width="95" height="130" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+        <text x="47.5" y="685" class="item-title" font-size="11">MUEBLE 14</text>
+        <text x="47.5" y="702" font-size="9" fill="#64748b" text-anchor="middle">Bazar / Hogar</text>
+        <text x="47.5" y="718" class="item-dim" font-size="8.5">1.30×0.95m</text>
+
+        <!-- Dimension Indicator on Right -->
+        <line x1="110" y1="0" x2="110" y2="770" stroke="#38bdf8" stroke-width="1.5" marker-start="url(#dim-arrow-start)" marker-end="url(#dim-arrow-end)"/>
+        <g transform="translate(125, 385) rotate(90)">
+          <text x="0" y="0" class="dim-text" font-size="13">7.70 METROS (FONDO: 0.95m)</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- 3. ZONA CENTRAL DE CAJAS & PEJIBAYERA -->
+    <g id="cajas-centrales" filter="url(#shadow)">
+      <!-- CAJA 01 (1.80m x 0.90m) -->
+      <g transform="translate(340, 60)">
+        <path d="M 0 0 L 90 0 L 90 180 L 65 180 L 65 50 L 25 50 L 25 180 L 0 180 Z" fill="url(#checkout-gold)" stroke="#b45309" stroke-width="1.8"/>
+        <rect x="5" y="6" width="80" height="36" rx="2" fill="#fef08a"/>
+        <circle cx="45" cy="110" r="15" fill="#fde68a" stroke="#d97706" stroke-width="1"/>
+        <text x="45" y="113" font-size="8" font-weight="700" fill="#92400e" text-anchor="middle">CAJERO</text>
+        <text x="12" y="130" class="item-title" font-size="11" fill="#78350f" transform="rotate(-90, 12, 130)">CAJA 01</text>
+      </g>
+
+      <!-- CAJA 02 (1.80m x 0.90m) -->
+      <g transform="translate(530, 60)">
+        <path d="M 0 0 L 90 0 L 90 180 L 65 180 L 65 50 L 25 50 L 25 180 L 0 180 Z" fill="url(#checkout-gold)" stroke="#b45309" stroke-width="1.8"/>
+        <rect x="5" y="6" width="80" height="36" rx="2" fill="#fef08a"/>
+        <circle cx="45" cy="110" r="15" fill="#fde68a" stroke="#d97706" stroke-width="1"/>
+        <text x="45" y="113" font-size="8" font-weight="700" fill="#92400e" text-anchor="middle">CAJERO</text>
+        <text x="78" y="130" class="item-title" font-size="11" fill="#78350f" transform="rotate(90, 78, 130)">CAJA 02</text>
+      </g>
+
+      <!-- PEJIBAYERA (0.90m x 0.60m) -->
+      <g transform="translate(340, 260)">
+        <rect width="90" height="60" rx="4" fill="url(#header-orange)" stroke="#9a3412" stroke-width="2"/>
+        <text x="45" y="26" class="badge-tag" font-size="10">PEJIBAYERA</text>
+        <text x="45" y="42" font-size="8.5" fill="#ffedd5" text-anchor="middle" font-weight="700">Frutas / Impulso</text>
+      </g>
+
+      <!-- MUEBLE 1 (3X3) FRENTE A CAJAS (Ancho 1.54m x Alto 0.95m) -->
+      <g transform="translate(450, 260)">
+        <rect width="154" height="95" rx="5" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+        <line x1="51" y1="0" x2="51" y2="95" stroke="#cbd5e1" stroke-width="1.2"/>
+        <line x1="102" y1="0" x2="102" y2="95" stroke="#cbd5e1" stroke-width="1.2"/>
+        <text x="77" y="38" class="item-title" font-size="12">MUEBLE 1 (3×3)</text>
+        <text x="77" y="55" class="item-dim" font-size="10">1.54 × 0.95 m</text>
+        <text x="77" y="72" font-size="9" fill="#64748b" text-anchor="middle">Frente a Cajas</text>
+      </g>
+    </g>
+
+    <!-- 4. GÓNDOLA IZQUIERDA (CABECERA 1, CABECERA 2, HUEVOS, CABECERA 3) -->
+    <!-- Cabeceras: 99cm Ancho x 75cm Alto (99px x 75px) -->
+    <g id="gondola-izquierda" filter="url(#shadow)">
+      <!-- CABECERA 1 (Isla 1.20m x 1.80m) -->
+      <g transform="translate(170, 60)">
+        <rect width="120" height="180" rx="5" fill="#ffffff" stroke="#334155" stroke-width="2"/>
+        <rect x="0" y="0" width="120" height="20" fill="#e2e8f0"/>
+        <rect x="0" y="160" width="120" height="20" fill="#e2e8f0"/>
+        <text x="60" y="80" class="item-title" font-size="13">CABECERA 1</text>
+        <text x="60" y="100" class="item-dim" font-size="11">1.20 × 1.80 m</text>
+        <text x="60" y="120" font-size="9.5" fill="#64748b" text-anchor="middle">Abarrotes Isla</text>
+      </g>
+
+      <!-- CABECERA 2 (Ancho: 99cm x Alto: 75cm) -->
+      <g transform="translate(180, 390)">
+        <rect width="99" height="75" rx="4" fill="url(#header-orange)" stroke="#9a3412" stroke-width="2"/>
+        <text x="49.5" y="32" class="badge-tag" font-size="11">CABECERA 2</text>
+        <text x="49.5" y="49" class="item-dim" fill="#ffffff" font-size="9.5">0.99 × 0.75 m</text>
+      </g>
+
+      <!-- MUEBLE HUEVOS (0.99m x 1.20m) -->
+      <g transform="translate(180, 475)">
+        <rect width="99" height="120" rx="4" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+        <line x1="0" y1="40" x2="99" y2="40" stroke="#fde047" stroke-width="1.2"/>
+        <line x1="0" y1="80" x2="99" y2="80" stroke="#fde047" stroke-width="1.2"/>
+        <text x="49.5" y="55" class="item-title" font-size="11" fill="#854d0e">MUEBLE HUEVOS</text>
+        <text x="49.5" y="72" class="item-dim" font-size="9.5" fill="#a16207">0.99 × 1.20 m</text>
+        <text x="49.5" y="98" font-size="8.5" fill="#854d0e" text-anchor="middle">Cartones / Canastas</text>
+      </g>
+
+      <!-- CABECERA 3 (Ancho: 99cm x Alto: 75cm) -->
+      <g transform="translate(180, 605)">
+        <rect width="99" height="75" rx="4" fill="url(#header-orange)" stroke="#9a3412" stroke-width="2"/>
+        <text x="49.5" y="32" class="badge-tag" font-size="11">CABECERA 3</text>
+        <text x="49.5" y="49" class="item-dim" fill="#ffffff" font-size="9.5">0.99 × 0.75 m</text>
+      </g>
+    </g>
+
+    <!-- 5. BLOQUE CENTRAL: URNA SECO (4.69m x 0.94m), MUEBLE 2 (3X3) & CABECERAS DERECHAS -->
+    <g id="bloque-central-secos" filter="url(#shadow)">
+      
+      <!-- MUEBLE 2 (3X3) CABECERA NORTE (1.54m x 0.95m) -->
+      <g transform="translate(420, 390)">
+        <rect width="154" height="95" rx="5" fill="url(#header-orange)" stroke="#9a3412" stroke-width="2"/>
+        <text x="77" y="38" class="badge-tag" font-size="12">MUEBLE 2 (3×3)</text>
+        <text x="77" y="56" class="item-dim" fill="#ffffff" font-size="10">1.54 × 0.95 m</text>
+        <text x="77" y="74" font-size="9" fill="#ffedd5" text-anchor="middle">Cabecera Norte Central</text>
+      </g>
+
+      <!-- URNA SECO / GÓNDOLA DOBLE CENTRAL (Largo: 4.69m x Ancho: 0.94m total) -->
+      <!-- Muebles 3, 4, 5 (Columna Izq) + Muebles 6, 7, 8 (Columna Der) -->
+      <!-- Escala: 94px ancho x 469px alto -->
+      <g transform="translate(450, 495)">
+        <rect width="94" height="469" rx="5" fill="#ffffff" stroke="#334155" stroke-width="2.5"/>
+        <line x1="47" y1="0" x2="47" y2="469" stroke="#94a3b8" stroke-width="1.5"/>
+        
+        <!-- Fila 1: Mueble 3 & Mueble 6 (1.56m) -->
+        <rect x="0" y="0" width="47" height="156" fill="#f8fafc" stroke="#cbd5e1"/>
+        <text x="23.5" y="65" class="item-title" font-size="9">M. 3</text>
+        <text x="23.5" y="80" class="item-dim" font-size="7.5">3×3</text>
+
+        <rect x="47" y="0" width="47" height="156" fill="#f8fafc" stroke="#cbd5e1"/>
+        <text x="70.5" y="65" class="item-title" font-size="9">M. 6</text>
+        <text x="70.5" y="80" class="item-dim" font-size="7.5">Limpieza</text>
+
+        <!-- Fila 2: Mueble 4 & Mueble 7 (1.56m) -->
+        <rect x="0" y="156" width="47" height="156" fill="#f8fafc" stroke="#cbd5e1"/>
+        <text x="23.5" y="221" class="item-title" font-size="9">M. 4</text>
+        <text x="23.5" y="236" class="item-dim" font-size="7.5">Secos</text>
+
+        <rect x="47" y="156" width="47" height="156" fill="#f8fafc" stroke="#cbd5e1"/>
+        <text x="70.5" y="221" class="item-title" font-size="9">M. 7</text>
+        <text x="70.5" y="236" class="item-dim" font-size="7.5">Higiene</text>
+
+        <!-- Fila 3: Mueble 5 & Mueble 8 (1.57m) -->
+        <rect x="0" y="312" width="47" height="157" fill="#f8fafc" stroke="#cbd5e1"/>
+        <text x="23.5" y="377" class="item-title" font-size="9">M. 5</text>
+        <text x="23.5" y="392" class="item-dim" font-size="7.5">Aceites</text>
+
+        <rect x="47" y="312" width="47" height="157" fill="#f8fafc" stroke="#cbd5e1"/>
+        <text x="70.5" y="377" class="item-title" font-size="9">M. 8</text>
+        <text x="70.5" y="392" class="item-dim" font-size="7.5">Snacks</text>
+
+        <!-- Dimension Indicator for Urna Seco -->
+        <line x1="-15" y1="0" x2="-15" y2="469" stroke="#38bdf8" stroke-width="1.5" marker-start="url(#dim-arrow-start)" marker-end="url(#dim-arrow-end)"/>
+        <g transform="translate(-25, 235) rotate(-90)">
+          <text x="0" y="0" class="dim-text" font-size="11">URNA SECO: 4.69 m (ANCHO TOTAL: 0.94 m)</text>
+        </g>
+      </g>
+
+      <!-- CABECERAS DERECHAS (CABECERA 6, 5, 4 • Ancho: 99cm x Alto: 75cm c/u) -->
+      <!-- Cabecera 6 -->
+      <g transform="translate(680, 420)">
+        <rect width="99" height="75" rx="4" fill="url(#header-orange)" stroke="#9a3412" stroke-width="2"/>
+        <text x="49.5" y="32" class="badge-tag" font-size="11">CABECERA 6</text>
+        <text x="49.5" y="49" class="item-dim" fill="#ffffff" font-size="9.5">0.99 × 0.75 m</text>
+        <text x="49.5" y="64" font-size="8" fill="#ffedd5" text-anchor="middle">Confitería</text>
+      </g>
+
+      <!-- Cabecera 5 -->
+      <g transform="translate(680, 525)">
+        <rect width="99" height="75" rx="4" fill="url(#header-orange)" stroke="#9a3412" stroke-width="2"/>
+        <text x="49.5" y="32" class="badge-tag" font-size="11">CABECERA 5</text>
+        <text x="49.5" y="49" class="item-dim" fill="#ffffff" font-size="9.5">0.99 × 0.75 m</text>
+        <text x="49.5" y="64" font-size="8" fill="#ffedd5" text-anchor="middle">Galletas / Café</text>
+      </g>
+
+      <!-- Cabecera 4 -->
+      <g transform="translate(680, 630)">
+        <rect width="99" height="75" rx="4" fill="url(#header-orange)" stroke="#9a3412" stroke-width="2"/>
+        <text x="49.5" y="32" class="badge-tag" font-size="11">CABECERA 4</text>
+        <text x="49.5" y="49" class="item-dim" fill="#ffffff" font-size="9.5">0.99 × 0.75 m</text>
+        <text x="49.5" y="64" font-size="8" fill="#ffedd5" text-anchor="middle">Licores / Bebidas</text>
+      </g>
+    </g>
+
+    <!-- 6. FILA INFERIOR: GRANOS, VERDURAS & HUEVOS INFERIOR -->
+    <g id="fila-inferior-granos" filter="url(#shadow)">
+      <!-- Cámara 2 Puertas Inferior (1.20m x 0.60m) -->
+      <g transform="translate(130, 995)">
+        <rect width="120" height="60" rx="4" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+        <text x="60" y="26" class="item-title" font-size="9.5">CÁMARA 2 PUERTAS</text>
+        <text x="60" y="42" class="item-dim" font-size="8.5">1.20 × 0.60 m</text>
+      </g>
+
+      <!-- MUEBLE GRANOS (1.60m x 0.60m) -->
+      <g transform="translate(260, 995)">
+        <rect width="160" height="60" rx="4" fill="url(#green-grains)" stroke="#15803d" stroke-width="2"/>
+        <text x="80" y="26" class="badge-tag" font-size="11">MUEBLE GRANOS</text>
+        <text x="80" y="42" class="item-dim" fill="#ffffff" font-size="9.5">1.60 × 0.60 m</text>
+        <text x="80" y="54" font-size="8" fill="#dcfce7" text-anchor="middle">Arroz, Frijol, Maíz</text>
+      </g>
+
+      <!-- GRANOS MENORES (1.30m x 0.60m) -->
+      <g transform="translate(430, 995)">
+        <rect width="130" height="60" rx="4" fill="url(#green-grains)" stroke="#15803d" stroke-width="2"/>
+        <text x="65" y="26" class="badge-tag" font-size="10.5">GRANOS MENORES</text>
+        <text x="65" y="42" class="item-dim" fill="#ffffff" font-size="9">1.30 × 0.60 m</text>
+        <text x="65" y="54" font-size="8" fill="#dcfce7" text-anchor="middle">Lentejas, Semillas</text>
+      </g>
+
+      <!-- 3 Módulos de Frutas/Verduras (0.45m x 0.60m c/u) -->
+      <g transform="translate(570, 995)">
+        <rect x="0" y="0" width="45" height="60" rx="3" fill="#ffedd5" stroke="#ea580c" stroke-width="1.5"/>
+        <text x="22.5" y="25" class="item-title" font-size="8" fill="#c2410c">MÓD 1</text>
+        <text x="22.5" y="40" font-size="7.5" fill="#9a3412" text-anchor="middle">Papas</text>
+
+        <rect x="49" y="0" width="45" height="60" rx="3" fill="#ffedd5" stroke="#ea580c" stroke-width="1.5"/>
+        <text x="71.5" y="25" class="item-title" font-size="8" fill="#c2410c">MÓD 2</text>
+        <text x="71.5" y="40" font-size="7.5" fill="#9a3412" text-anchor="middle">Cebollas</text>
+
+        <rect x="98" y="0" width="45" height="60" rx="3" fill="#ffedd5" stroke="#ea580c" stroke-width="1.5"/>
+        <text x="120.5" y="25" class="item-title" font-size="8" fill="#c2410c">MÓD 3</text>
+        <text x="120.5" y="40" font-size="7.5" fill="#9a3412" text-anchor="middle">Tubérc.</text>
+      </g>
+
+      <!-- HUEVOS (Fila Inferior 1.30m x 0.60m) -->
+      <g transform="translate(720, 995)">
+        <rect width="130" height="60" rx="4" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+        <text x="65" y="26" class="item-title" font-size="11" fill="#854d0e">HUEVOS</text>
+        <text x="65" y="42" class="item-dim" font-size="9" fill="#a16207">1.30 × 0.60 m</text>
+      </g>
+    </g>
+
+    <!-- COTAS DE PASILLOS (DIMENSIONES LIBRES DE CIRCULACIÓN) -->
+    <g id="cotas-pasillos">
+      <!-- Pasillo 1 (Entre Cámara Frío y Cabeceras Izq): 1.65 m -->
+      <line x1="100" y1="500" x2="180" y2="500" class="dim-line"/>
+      <rect x="110" y="490" width="60" height="18" rx="3" fill="#0f172a"/>
+      <text x="140" y="503" class="dim-text" font-size="10.5">1.65 m</text>
+
+      <!-- Pasillo 2 (Entre Góndola Izq y Urna Seco Central): 1.70 m -->
+      <line x1="280" y1="550" x2="450" y2="550" class="dim-line"/>
+      <rect x="335" y="540" width="60" height="18" rx="3" fill="#0f172a"/>
+      <text x="365" y="553" class="dim-text" font-size="10.5">1.70 m</text>
+
+      <!-- Pasillo 3 (Entre Urna Seco y Cabeceras Der): 1.60 m -->
+      <line x1="544" y1="550" x2="680" y2="550" class="dim-line"/>
+      <rect x="582" y="540" width="60" height="18" rx="3" fill="#0f172a"/>
+      <text x="612" y="553" class="dim-text" font-size="10.5">1.60 m</text>
+
+      <!-- Pasillo 4 (Entre Cabeceras Der y Mueble Seco Grande): 1.55 m -->
+      <line x1="779" y1="550" x2="875" y2="550" class="dim-line"/>
+      <rect x="797" y="540" width="60" height="18" rx="3" fill="#0f172a"/>
+      <text x="827" y="553" class="dim-text" font-size="10.5">1.55 m</text>
+    </g>
+
+  </g> <!-- Fin main-plan -->
+
+  <!-- TABLA DE RESUMEN TÉCNICO & LEYENDA (INFERIOR) -->
+  <g transform="translate(110, 1340)">
+    <rect width="980" height="200" rx="8" fill="#1e293b" stroke="#334155" stroke-width="2" filter="url(#shadow)"/>
+    
+    <text x="30" y="30" class="legend-title">RESUMEN DE METRAJES REALES Y EQUIPAMIENTO DE TIENDA</text>
+    <line x1="30" y1="42" x2="950" y2="42" stroke="#334155" stroke-width="1.5"/>
+
+    <!-- Columna 1: Refrigeración -->
+    <g transform="translate(30, 60)">
+      <rect width="20" height="20" rx="3" fill="#0284c7" />
+      <text x="30" y="15" class="legend-text">Cámara Frío Mural Principal</text>
+      <text x="30" y="32" class="legend-dim">7.37 m × 0.90 m (Alto: 1.70m)</text>
+
+      <rect y="45" width="20" height="20" rx="3" fill="#bae6fd" />
+      <text x="30" y="60" class="legend-text">Cámaras Pequeñas Frío (x2)</text>
+      <text x="30" y="77" class="legend-dim">0.55 m × 0.63 m (Alto: 1.30m)</text>
+    </g>
+
+    <!-- Columna 2: Mobiliario Seco -->
+    <g transform="translate(350, 60)">
+      <rect width="20" height="20" rx="3" fill="#ffffff" />
+      <text x="30" y="15" class="legend-text">Mueble Seco Grande Derecha</text>
+      <text x="30" y="32" class="legend-dim">7.70 m × 0.95 m (Muebles 9 al 14)</text>
+
+      <rect y="45" width="20" height="20" rx="3" fill="#ffffff" />
+      <text x="30" y="60" class="legend-text">Urna Seco Central (3 Muebles)</text>
+      <text x="30" y="77" class="legend-dim">4.69 m × 0.94 m (Muebles 3 al 8)</text>
+    </g>
+
+    <!-- Columna 3: Cabeceras y Módulos -->
+    <g transform="translate(680, 60)">
+      <rect width="20" height="20" rx="3" fill="#f97316" />
+      <text x="30" y="15" class="legend-text">Cabeceras de Góndola (x6)</text>
+      <text x="30" y="32" class="legend-dim">0.99 m Ancho × 0.75 m Fondo</text>
+
+      <rect y="45" width="20" height="20" rx="3" fill="#fbbf24" />
+      <text x="30" y="60" class="legend-text">Mueble 3×3 (x2 unidades)</text>
+      <text x="30" y="77" class="legend-dim">1.54 m Ancho × 0.95 m Fondo</text>
+    </g>
+  </g>
+</svg>
