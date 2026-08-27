@@ -4055,7 +4055,18 @@
       document.getElementById('btn-theme').textContent = '🌙 Oscuro';
     }
 
-    // --- MAIN 2D RENDER ---
+    // --- MAIN 2D RENDER & 60FPS FRAME SCHEDULER ---
+    let render2DPending = false;
+    function scheduleRender2D() {
+      if (!render2DPending) {
+        render2DPending = true;
+        requestAnimationFrame(() => {
+          render2D();
+          render2DPending = false;
+        });
+      }
+    }
+
     function render2D() {
       isNavGridDirty = true;
       perimLayer.innerHTML = '';
@@ -4589,13 +4600,14 @@
 
       document.getElementById('bldg-x').value = (buildingPerimeter.x / 100).toFixed(2);
       document.getElementById('bldg-y').value = (buildingPerimeter.y / 100).toFixed(2);
-      render2D();
+      scheduleRender2D();
     }
 
     function endPerimeterMove() {
       isMovingPerimeter = false;
       window.removeEventListener('mousemove', onPerimeterMove);
       window.removeEventListener('mouseup', endPerimeterMove);
+      render2D();
       if (viewMode === '3d') update3DScene();
     }
 
@@ -4721,7 +4733,7 @@
 
       updateTooltip(e.clientX, e.clientY, newW, newH);
       updateBuildingStats();
-      render2D();
+      scheduleRender2D();
     }
 
     function endPerimResize() {
@@ -4729,6 +4741,7 @@
       dimTooltip.style.display = 'none';
       window.removeEventListener('mousemove', onPerimResize);
       window.removeEventListener('mouseup', endPerimResize);
+      render2D();
       if (viewMode === '3d') update3DScene();
       showToast('Perímetro actualizado');
     }
@@ -4918,7 +4931,7 @@
         }
       });
 
-      render2D();
+      scheduleRender2D();
     }
 
     function endDrag() {
@@ -4926,6 +4939,7 @@
       smartGuidesLayer.innerHTML = '';
       window.removeEventListener('mousemove', onDrag);
       window.removeEventListener('mouseup', endDrag);
+      render2D();
       if (viewMode === '3d') update3DScene();
     }
 
@@ -4998,7 +5012,7 @@
       document.getElementById('edit-h').value = (newH / 100).toFixed(2);
 
       updateTooltip(e.clientX, e.clientY, newW, newH);
-      render2D();
+      scheduleRender2D();
     }
 
     function endResize() {
@@ -5007,6 +5021,7 @@
       dimTooltip.style.display = 'none';
       window.removeEventListener('mousemove', onResize);
       window.removeEventListener('mouseup', endResize);
+      render2D();
       if (viewMode === '3d') update3DScene();
       showToast('Medidas actualizadas');
     }
@@ -5046,13 +5061,14 @@
 
       item.rot = snapAngle;
       document.getElementById('edit-rot').value = snapAngle;
-      render2D();
+      scheduleRender2D();
     }
 
     function endRotate() {
       isRotating = false;
       window.removeEventListener('mousemove', onRotate);
       window.removeEventListener('mouseup', endRotate);
+      render2D();
       if (viewMode === '3d') update3DScene();
     }
 
@@ -5109,6 +5125,10 @@
 
     function addNewArchItem(idCode, name, w, h, fill, archType) {
       saveState();
+      const centerX = buildingPerimeter ? (buildingPerimeter.x + buildingPerimeter.w / 2 - w / 2) : 450;
+      const centerY = buildingPerimeter ? (buildingPerimeter.y + buildingPerimeter.h / 2 - h / 2) : 450;
+      const offset = (archElements.length % 6) * 16;
+
       const newArch = {
         id: 'arch-' + Date.now(),
         name: name,
@@ -5120,17 +5140,21 @@
         type: archType,
         shape: 'rect',
         rot: 0,
-        x: 450,
-        y: 450
+        x: Math.round(centerX + offset),
+        y: Math.round(centerY + offset)
       };
       archElements.push(newArch);
-      selectItem(newArch, 'arch');
-      showToast(`Añadido: ${name}`);
+      toggleSelect(newArch.id, false);
+      showToast(`✅ Añadido: ${name}`);
       if (viewMode === '3d') update3DScene();
     }
 
     function addNewGenericShape(shape, name, w, h, fill, stroke) {
       saveState();
+      const centerX = buildingPerimeter ? (buildingPerimeter.x + buildingPerimeter.w / 2 - w / 2) : 450;
+      const centerY = buildingPerimeter ? (buildingPerimeter.y + buildingPerimeter.h / 2 - h / 2) : 450;
+      const offset = (storeItems.length % 6) * 16;
+
       const newItem = {
         id: 'shape-' + Date.now(),
         name: name,
@@ -5142,12 +5166,12 @@
         type: 'custom',
         shape: shape,
         rot: 0,
-        x: 450,
-        y: 450
+        x: Math.round(centerX + offset),
+        y: Math.round(centerY + offset)
       };
       storeItems.push(newItem);
-      selectItem(newItem, 'item');
-      showToast(`Añadido: ${name}`);
+      toggleSelect(newItem.id, false);
+      showToast(`✅ Añadido: ${name}`);
       if (viewMode === '3d') update3DScene();
     }
 
@@ -5174,10 +5198,16 @@
       };
 
       const t = templates[type] || templates['cabecera'];
-      const newItem = { id: 'item-' + Date.now(), ...t, x: 450, y: 450, rot: 0 };
+      const itemW = t.w || 90;
+      const itemH = t.h || 90;
+      const centerX = buildingPerimeter ? (buildingPerimeter.x + buildingPerimeter.w / 2 - itemW / 2) : 450;
+      const centerY = buildingPerimeter ? (buildingPerimeter.y + buildingPerimeter.h / 2 - itemH / 2) : 450;
+      const offset = (storeItems.length % 6) * 16;
+
+      const newItem = { id: 'item-' + Date.now(), ...t, x: Math.round(centerX + offset), y: Math.round(centerY + offset), rot: 0 };
       storeItems.push(newItem);
-      selectItem(newItem, 'item');
-      showToast(`Añadido: ${newItem.name}`);
+      toggleSelect(newItem.id, false);
+      showToast(`✅ Añadido: ${newItem.name}`);
       if (viewMode === '3d') update3DScene();
     }
 
@@ -6344,8 +6374,10 @@
 
     function animate3D() {
       requestAnimationFrame(animate3D);
-      if (controls) controls.update();
-      if (renderer && scene && camera) renderer.render(scene, camera);
+      if (viewMode === '3d') {
+        if (controls) controls.update();
+        if (renderer && scene && camera) renderer.render(scene, camera);
+      }
     }
 
     function setCameraPreset(preset) {
