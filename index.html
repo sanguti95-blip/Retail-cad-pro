@@ -3061,8 +3061,8 @@
           speed: 1.6 + Math.random() * 0.8,
           heading: initialHeading,
           targetHeading: initialHeading,
-          hasCart: plan.hasCart,
-          hasBasket: plan.hasBasket,
+          hasCart: false, // Ingresa con manos libres a la tienda
+          hasBasket: false, // Ingresa con manos libres a la tienda
           cartItems: [],
           cartColors: [],
           stops: plan.stops,
@@ -3089,17 +3089,27 @@
       }
 
       if (stop.type === 'cart_station') {
-        s.hasCart = true;
+        s.hasCart = true; // Toma el carrito físicamente en EST-01
         s.actionEmoji = '🛒';
         s.actionLabel = 'Carrito';
         s.state = 'BROWSING';
         s.timer = 0.8;
+        if (stop.item) {
+          const cx = stop.item.x + stop.item.w / 2;
+          const cy = stop.item.y + stop.item.h / 2;
+          s.targetHeading = Math.atan2(cy - s.y, cx - s.x);
+        }
       } else if (stop.type === 'basket_station') {
-        s.hasBasket = true;
+        s.hasBasket = true; // Toma la canasta físicamente en CAN-01
         s.actionEmoji = '🧺';
         s.actionLabel = 'Canasta';
         s.state = 'BROWSING';
         s.timer = 0.8;
+        if (stop.item) {
+          const cx = stop.item.x + stop.item.w / 2;
+          const cy = stop.item.y + stop.item.h / 2;
+          s.targetHeading = Math.atan2(cy - s.y, cx - s.x);
+        }
       } else if (stop.type === 'shelf') {
         s.state = 'BROWSING';
         s.timer = 1.6 + Math.random() * 1.8; // 1.6s - 3.4s dwell
