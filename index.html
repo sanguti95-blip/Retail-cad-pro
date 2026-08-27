@@ -1167,11 +1167,20 @@
       100% { transform: translate(0, -20px) scale(1); opacity: 1; }
     }
     .shopper-paying-glow {
-      animation: simPayGlow 1.4s infinite ease-in-out;
+      animation: simPayGlow 1.2s infinite ease-in-out;
     }
     @keyframes simPayGlow {
       0%, 100% { stroke: #22c55e; stroke-width: 1.5; }
-      50% { stroke: #86efac; stroke-width: 2.5; filter: drop-shadow(0 0 5px rgba(34,197,94,0.7)); }
+      50% { stroke: #86efac; stroke-width: 2.8; filter: drop-shadow(0 0 8px rgba(34,197,94,0.85)); }
+    }
+    .shopper-paying-halo {
+      animation: simPayHaloPulse 1.2s infinite ease-in-out;
+      transform-origin: center;
+      pointer-events: none;
+    }
+    @keyframes simPayHaloPulse {
+      0%, 100% { r: 12px; opacity: 0.85; stroke-width: 1.5; }
+      50% { r: 17px; opacity: 0.25; stroke-width: 2.8; filter: drop-shadow(0 0 6px rgba(34,197,94,0.9)); }
     }
   </style>
 </head>
@@ -2850,6 +2859,27 @@
       return current + diff * Math.min(1, factor);
     }
 
+    function getLeastCongestedPOS(grid, excludeShopperId = null) {
+      const checkouts = storeItems.filter(i => i.type === 'checkout' || (i.id && (i.id.includes('caja') || i.id.includes('pos'))) || (i.name && (i.name.toLowerCase().includes('pos') || i.name.toLowerCase().includes('caja'))));
+      if (checkouts.length === 0) return null;
+
+      let bestPOS = checkouts[0];
+      let minCount = 9999;
+
+      checkouts.forEach(pos => {
+        const assignedCount = shoppers.filter(s => s.id !== excludeShopperId && s.state !== 'EXITED' && s.assignedPOS && s.assignedPOS.id === pos.id).length;
+        if (assignedCount < minCount) {
+          minCount = assignedCount;
+          bestPOS = pos;
+        }
+      });
+
+      return {
+        item: bestPOS,
+        targetPos: getShelfInteractionPoint(bestPOS, grid)
+      };
+    }
+
     function createShopperPlan() {
       const grid = getNavGrid();
 
@@ -2873,12 +2903,14 @@
       const exitDoor = exitDoors[Math.floor(Math.random() * exitDoors.length)];
       const exitPos = grid.findNearestWalkable(exitDoor.x + exitDoor.w / 2, exitDoor.y + exitDoor.h / 2 - 10);
 
-      const hasCart = Math.random() < 0.35;
-      const hasBasket = !hasCart && Math.random() < 0.65;
+      // Customer Equipment Distribution: 45% Carrito (EST-01), 35% Canasta (CAN-01), 20% A mano
+      const equipRoll = Math.random();
+      const hasCart = equipRoll < 0.45;
+      const hasBasket = !hasCart && equipRoll < 0.80;
 
       const stops = [];
 
-      // Equipment Station
+      // 1. Equipment Station Stop
       if (hasCart) {
         const cartStation = storeItems.find(i => i.type === 'carts' || i.id.includes('coche') || i.name.toLowerCase().includes('carrito'));
         if (cartStation) {
@@ -2893,7 +2925,7 @@
         }
       }
 
-      // 2 to 5 diverse Shopping Shelves
+      // 2. Department Shelves (2 to 5 diverse stops)
       const validShelves = storeItems.filter(i => i.type !== 'carts' && i.type !== 'baskets_station' && i.type !== 'checkout');
       if (validShelves.length > 0) {
         const numStops = Math.min(validShelves.length, 2 + Math.floor(Math.random() * 4));
@@ -2911,21 +2943,19 @@
         }
       }
 
-      // Checkout POS
-      const checkouts = storeItems.filter(i => i.type === 'checkout' || i.id.includes('caja') || i.id.includes('pos'));
-      if (checkouts.length > 0) {
-        const chosenPOS = checkouts[Math.floor(Math.random() * checkouts.length)];
-        const pt = getShelfInteractionPoint(chosenPOS, grid);
+      // 3. Checkout POS Stop (Initially least congested)
+      const bestPOS = getLeastCongestedPOS(grid);
+      if (bestPOS) {
         stops.push({
           type: 'checkout',
-          targetPos: pt,
-          item: chosenPOS,
+          targetPos: bestPOS.targetPos,
+          item: bestPOS.item,
           emoji: '💳',
-          label: 'POS Cobro'
+          label: bestPOS.item.name ? bestPOS.item.name.split('|')[0].trim() : 'POS Cobro'
         });
       }
 
-      // Exit Door
+      // 4. Exit Door Stop
       stops.push({
         type: 'exit',
         targetPos: exitPos,
@@ -2937,7 +2967,8 @@
         startPos,
         stops,
         hasCart,
-        hasBasket
+        hasBasket,
+        assignedPOS: bestPOS ? bestPOS.item : null
       };
     }
 
@@ -3038,10 +3069,11 @@
           stopIdx: 0,
           currentPath: initialPath,
           pathIdx: 1,
-          state: 'WALKING', // 'WALKING', 'BROWSING', 'PAYING', 'EXITED'
+          state: 'WALKING', // 'WALKING', 'BROWSING', 'QUEUED', 'PAYING', 'EXITED'
           timer: 0,
           actionEmoji: '',
           actionLabel: '',
+          assignedPOS: plan.assignedPOS,
           startTime: Date.now()
         };
 
@@ -3070,7 +3102,7 @@
         s.timer = 0.8;
       } else if (stop.type === 'shelf') {
         s.state = 'BROWSING';
-        s.timer = 1.6 + Math.random() * 1.8;
+        s.timer = 1.6 + Math.random() * 1.8; // 1.6s - 3.4s dwell
         s.actionEmoji = stop.emoji || '🛍️';
         s.actionLabel = stop.label || '';
         // Face the shelf
@@ -3080,10 +3112,25 @@
           s.targetHeading = Math.atan2(cy - s.y, cx - s.x);
         }
       } else if (stop.type === 'checkout') {
-        s.state = 'PAYING';
-        s.timer = 2.2 + Math.random() * 1.8;
-        s.actionEmoji = '💳';
-        s.actionLabel = 'Pago POS';
+        s.assignedPOS = stop.item;
+        // Check if another customer is already paying at this POS
+        const isOccupied = shoppers.some(other => other.id !== s.id && other.assignedPOS && other.assignedPOS.id === stop.item.id && other.state === 'PAYING');
+
+        if (isOccupied) {
+          s.state = 'QUEUED';
+          s.actionEmoji = '⏳';
+          s.actionLabel = 'Fila POS';
+        } else {
+          s.state = 'PAYING';
+          s.timer = 1.8 + Math.random() * 1.6; // 1.8s - 3.4s checkout time
+          s.actionEmoji = '💳';
+          s.actionLabel = 'Pago POS';
+        }
+        if (stop.item) {
+          const cx = stop.item.x + stop.item.w / 2;
+          const cy = stop.item.y + stop.item.h / 2;
+          s.targetHeading = Math.atan2(cy - s.y, cx - s.x);
+        }
       } else if (stop.type === 'exit') {
         s.state = 'EXITED';
       }
@@ -3116,15 +3163,54 @@
             }
             s.stopIdx++;
             if (s.stopIdx < s.stops.length) {
-              s.currentPath = grid.findPath({ x: s.x, y: s.y }, s.stops[s.stopIdx].targetPos);
+              const nextStop = s.stops[s.stopIdx];
+              // If next stop is checkout, dynamically select the least congested POS
+              if (nextStop.type === 'checkout') {
+                const best = getLeastCongestedPOS(grid, s.id);
+                if (best) {
+                  nextStop.item = best.item;
+                  nextStop.targetPos = best.targetPos;
+                  nextStop.label = best.item.name ? best.item.name.split('|')[0].trim() : 'POS Cobro';
+                  s.assignedPOS = best.item;
+                }
+              }
+              s.currentPath = grid.findPath({ x: s.x, y: s.y }, nextStop.targetPos);
               s.pathIdx = 0;
               s.state = 'WALKING';
             } else {
               s.state = 'EXITED';
             }
           }
+        } else if (s.state === 'QUEUED') {
+          s.heading = lerpAngle(s.heading, s.targetHeading, 0.12 * simSpeed);
+          if (s.assignedPOS) {
+            const posShoppers = shoppers.filter(other => other.assignedPOS && other.assignedPOS.id === s.assignedPOS.id && (other.state === 'PAYING' || other.state === 'QUEUED'));
+            const payingShopper = posShoppers.find(other => other.state === 'PAYING');
+            const queuedShoppers = posShoppers.filter(other => other.state === 'QUEUED');
+
+            // If POS is free and this shopper is first in queue:
+            if (!payingShopper && queuedShoppers[0] && queuedShoppers[0].id === s.id) {
+              s.state = 'PAYING';
+              s.timer = 1.8 + Math.random() * 1.6;
+              s.actionEmoji = '💳';
+              s.actionLabel = 'Pago POS';
+            } else {
+              // Maintain physical queue alignment behind the register
+              const queueIdx = queuedShoppers.findIndex(other => other.id === s.id);
+              if (queueIdx >= 0) {
+                const stop = s.stops[s.stopIdx];
+                const base = stop ? stop.targetPos : { x: s.assignedPOS.x + s.assignedPOS.w / 2, y: s.assignedPOS.y + s.assignedPOS.h + 20 };
+                const qOffset = (queueIdx + 1) * 20;
+                const targetQX = base.x;
+                const targetQY = base.y + qOffset;
+                s.x += (targetQX - s.x) * 0.06 * simSpeed;
+                s.y += (targetQY - s.y) * 0.06 * simSpeed;
+              }
+            }
+          }
         } else if (s.state === 'PAYING') {
           s.timer -= dt * simSpeed;
+          s.heading = lerpAngle(s.heading, s.targetHeading, 0.12 * simSpeed);
           if (s.timer <= 0) {
             s.actionEmoji = '🧾';
             s.stopIdx++;
@@ -3225,6 +3311,17 @@
         const rotG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         rotG.setAttribute('transform', `rotate(${deg.toFixed(1)})`);
 
+        // Pulsating Green Halo on Avatar during Payment
+        if (s.state === 'PAYING') {
+          const halo = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          halo.setAttribute('r', '14');
+          halo.setAttribute('fill', 'rgba(34, 197, 94, 0.25)');
+          halo.setAttribute('stroke', '#22c55e');
+          halo.setAttribute('stroke-width', '2');
+          halo.setAttribute('class', 'shopper-paying-halo');
+          rotG.appendChild(halo);
+        }
+
         // Directional Nose
         const nose = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
         nose.setAttribute('points', '7,-3.5 12,0 7,3.5');
@@ -3295,8 +3392,8 @@
 
         g.appendChild(rotG);
 
-        // Floating Action Badge when Browsing or Paying
-        if (s.state === 'BROWSING' || s.state === 'PAYING') {
+        // Floating Action Badge when Browsing, Queued or Paying
+        if (s.state === 'BROWSING' || s.state === 'PAYING' || s.state === 'QUEUED') {
           const badgeG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
           badgeG.setAttribute('class', `shopper-badge ${s.state === 'PAYING' ? 'shopper-paying-glow' : ''}`);
           badgeG.setAttribute('transform', 'translate(0, -18)');
@@ -3308,7 +3405,7 @@
           badgeBg.setAttribute('height', '16');
           badgeBg.setAttribute('rx', '8');
           badgeBg.setAttribute('fill', '#0f172a');
-          badgeBg.setAttribute('stroke', s.state === 'PAYING' ? '#22c55e' : '#facc15');
+          badgeBg.setAttribute('stroke', s.state === 'PAYING' ? '#22c55e' : (s.state === 'QUEUED' ? '#f59e0b' : '#facc15'));
           badgeBg.setAttribute('stroke-width', '1.5');
           badgeG.appendChild(badgeBg);
 
@@ -3316,7 +3413,7 @@
           badgeTxt.setAttribute('y', '3');
           badgeTxt.setAttribute('text-anchor', 'middle');
           badgeTxt.setAttribute('font-size', '10');
-          badgeTxt.textContent = s.actionEmoji || '🛍️';
+          badgeTxt.textContent = s.actionEmoji || (s.state === 'QUEUED' ? '⏳' : '🛍️');
           badgeG.appendChild(badgeTxt);
 
           g.appendChild(badgeG);
