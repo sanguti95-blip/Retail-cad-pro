@@ -12,6 +12,7 @@
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     /* ==========================================================================
@@ -1251,6 +1252,7 @@
         <button class="btn" id="btn-mode-3d" onclick="switchView('3d')">🎮 3D Realista</button>
         <button class="btn btn-orange" onclick="openClearModal()">🧹 Limpiar</button>
         <button class="btn" id="btn-theme" onclick="toggleTheme()">☀️ Claro</button>
+        <button class="btn btn-purple" onclick="openSupabaseModal()" title="Sincronización en la Nube con Supabase (gxnwyeczuwiopjbwzxjw)">☁️ Nube</button>
         <button class="btn btn-green" onclick="exportDXF()">🏗️ DXF</button>
         <button class="btn btn-cyan" onclick="exportSVG()">📥 SVG</button>
         <button class="btn" onclick="exportPNG()">🖼️ PNG</button>
@@ -1502,6 +1504,46 @@
   </div>
 
   <div id="toast-msg" role="status" aria-live="polite">Mensaje</div>
+
+  <!-- MODAL SUPABASE CLOUD SYNC -->
+  <div id="supabase-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:var(--z-modal); justify-content:center; align-items:center;">
+    <div style="background:var(--bg-panel); border:1px solid var(--border-strong); border-radius:var(--radius-lg); width:520px; max-width:92vw; padding:24px; box-shadow:var(--shadow-lg);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <div style="font-size:16px; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+          ⚡ <span>Supabase Cloud Sync</span>
+        </div>
+        <button class="btn" style="padding:4px 8px; font-size:12px;" onclick="closeSupabaseModal()">✕</button>
+      </div>
+
+      <div style="background:var(--bg-card); padding:12px; border-radius:var(--radius-md); margin-bottom:16px; font-size:12px; border:1px solid var(--border-subtle);">
+        <div style="color:var(--text-muted); font-size:11px; margin-bottom:4px;">PROYECTO SUPABASE CONECTADO:</div>
+        <div style="font-family:var(--font-mono); color:var(--accent-cyan); font-weight:700; word-break:break-all;">https://gxnwyeczuwiopjbwzxjw.supabase.co</div>
+      </div>
+
+      <div class="prop-group" style="margin-bottom:14px;">
+        <label>Clave Pública de Acceso (anon public key)</label>
+        <input type="password" id="supabase-key-input" class="prop-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." onchange="saveSupabaseKey(this.value)">
+      </div>
+
+      <div class="prop-group" style="margin-bottom:18px;">
+        <label>Nombre del Plano / Sucursal para Guardar</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="supabase-layout-name" class="prop-input" placeholder="Ej. Tienda Central 10x12m" value="Plano Supermercado 10x12m">
+          <button class="btn btn-green" onclick="saveToSupabaseCloud()" style="white-space:nowrap;">☁️ Guardar</button>
+        </div>
+      </div>
+
+      <div style="font-size:13px; font-weight:700; color:var(--text-main); margin-bottom:8px;">📂 Planos Guardados en la Nube</div>
+      <div id="supabase-layouts-list" style="max-height:160px; overflow-y:auto; background:var(--bg-input); border-radius:var(--radius-md); border:1px solid var(--border-subtle); padding:8px; margin-bottom:16px; font-size:12px;">
+        <div style="color:var(--text-muted); text-align:center; padding:12px;">Cargando planos desde Supabase...</div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button class="btn" onclick="fetchSupabaseLayouts()">🔄 Refrescar</button>
+        <button class="btn btn-cyan" onclick="closeSupabaseModal()">Listo</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     // ==========================================================================
@@ -5173,6 +5215,184 @@
       reader.readAsText(file);
     }
 
+    // ==========================================================================
+    // SUPABASE CLOUD SYNC ENGINE (Project: gxnwyeczuwiopjbwzxjw)
+    // ==========================================================================
+    const SUPABASE_URL = 'https://gxnwyeczuwiopjbwzxjw.supabase.co';
+    let supabaseClient = null;
+
+    function getSupabaseKey() {
+      return localStorage.getItem('supabase_anon_key') || '';
+    }
+
+    function saveSupabaseKey(key) {
+      if (!key) return;
+      localStorage.setItem('supabase_anon_key', key.trim());
+      initSupabase();
+      showToast('🔑 Clave de Supabase guardada');
+      fetchSupabaseLayouts();
+    }
+
+    function initSupabase() {
+      const key = getSupabaseKey();
+      if (key && window.supabase) {
+        try {
+          supabaseClient = window.supabase.createClient(SUPABASE_URL, key);
+        } catch (err) {
+          console.error('Error init supabase:', err);
+        }
+      }
+    }
+
+    function openSupabaseModal() {
+      const modal = document.getElementById('supabase-modal');
+      modal.style.display = 'flex';
+      document.getElementById('supabase-key-input').value = getSupabaseKey();
+      initSupabase();
+      fetchSupabaseLayouts();
+    }
+
+    function closeSupabaseModal() {
+      document.getElementById('supabase-modal').style.display = 'none';
+    }
+
+    async function saveToSupabaseCloud() {
+      const nameInput = document.getElementById('supabase-layout-name');
+      const name = (nameInput.value || 'Plano Supermercado').trim();
+      const key = getSupabaseKey();
+
+      if (!key) {
+        showToast('⚠️ Ingresa tu clave pública (anon key) de Supabase');
+        document.getElementById('supabase-key-input').focus();
+        return;
+      }
+
+      initSupabase();
+      if (!supabaseClient) {
+        showToast('❌ Error inicializando cliente Supabase');
+        return;
+      }
+
+      showToast('☁️ Guardando plano en Supabase...');
+
+      const payload = {
+        name: name,
+        building_perimeter: buildingPerimeter,
+        store_items: storeItems,
+        arch_elements: archElements,
+        heat_points: heatPoints,
+        updated_at: new Date().toISOString()
+      };
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('store_layouts')
+          .insert([payload])
+          .select();
+
+        if (error) {
+          console.error('Supabase save error:', error);
+          showToast(`❌ Error: ${error.message || 'Tabla store_layouts no encontrada'}`);
+        } else {
+          showToast('✅ ¡Plano guardado exitosamente en la Nube!');
+          fetchSupabaseLayouts();
+        }
+      } catch (err) {
+        console.error('Supabase Exception:', err);
+        showToast(`❌ Error al conectar: ${err.message}`);
+      }
+    }
+
+    async function fetchSupabaseLayouts() {
+      const listEl = document.getElementById('supabase-layouts-list');
+      const key = getSupabaseKey();
+
+      if (!key) {
+        listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:12px;">Ingresa tu clave anon de Supabase arriba para ver los planos en la nube.</div>';
+        return;
+      }
+
+      initSupabase();
+      if (!supabaseClient) return;
+
+      listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:12px;">⏳ Consultando base de datos Supabase...</div>';
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('store_layouts')
+          .select('id, name, created_at, updated_at')
+          .order('updated_at', { ascending: false });
+
+        if (error) {
+          listEl.innerHTML = `<div style="color:#ef4444; padding:8px;">⚠️ ${error.message}<br><small style="color:var(--text-muted);">Asegúrate de haber creado la tabla <code>store_layouts</code> en Supabase SQL Editor.</small></div>`;
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          listEl.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:12px;">No hay planos guardados aún. ¡Guarda el actual arriba!</div>';
+          return;
+        }
+
+        listEl.innerHTML = '';
+        data.forEach(item => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid var(--border-subtle); gap:8px;';
+          
+          const info = document.createElement('div');
+          info.innerHTML = `<strong>${item.name || 'Sin nombre'}</strong><br><small style="color:var(--text-muted); font-size:10px;">${new Date(item.updated_at || item.created_at).toLocaleString()}</small>`;
+          
+          const btnLoad = document.createElement('button');
+          btnLoad.className = 'btn btn-cyan';
+          btnLoad.style.cssText = 'padding:3px 8px; font-size:11px;';
+          btnLoad.textContent = '📥 Cargar';
+          btnLoad.onclick = () => loadLayoutFromSupabase(item.id);
+
+          row.appendChild(info);
+          row.appendChild(btnLoad);
+          listEl.appendChild(row);
+        });
+      } catch (err) {
+        listEl.innerHTML = `<div style="color:#ef4444; padding:8px;">Error: ${err.message}</div>`;
+      }
+    }
+
+    async function loadLayoutFromSupabase(layoutId) {
+      if (!supabaseClient) initSupabase();
+      showToast('⏳ Descargando plano desde la nube...');
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('store_layouts')
+          .select('*')
+          .eq('id', layoutId)
+          .single();
+
+        if (error || !data) {
+          showToast(`❌ Error al cargar: ${error ? error.message : 'No encontrado'}`);
+          return;
+        }
+
+        saveState();
+
+        if (data.building_perimeter) buildingPerimeter = data.building_perimeter;
+        if (data.store_items) storeItems = data.store_items;
+        if (data.arch_elements) archElements = data.arch_elements;
+        if (data.heat_points) heatPoints = data.heat_points;
+
+        selectedIds.clear();
+        selectedId = null;
+        selectedHeatId = null;
+
+        updateBuildingStats();
+        render2D();
+        if (viewMode === '3d') update3DScene();
+        closeSupabaseModal();
+        showToast(`✅ Plano "${data.name}" cargado exitosamente`);
+      } catch (err) {
+        showToast(`❌ Error: ${err.message}`);
+      }
+    }
+
     function showToast(txt) {
       const t = document.getElementById('toast-msg');
       t.textContent = txt;
@@ -5183,6 +5403,7 @@
     // Initialize
     updateBuildingStats();
     render2D();
+    initSupabase();
   </script>
 </body>
 </html>
