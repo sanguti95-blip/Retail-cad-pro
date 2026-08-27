@@ -67,6 +67,17 @@
       --grid-major: #1e293b;
       --wall-default: #38bdf8;
       
+      /* Glassmorphic Floating HUD Tokens (Dark) */
+      --bg-glass-hud: rgba(13, 19, 31, 0.85);
+      --bg-glass-hud-hover: rgba(27, 38, 64, 0.95);
+      --text-glass-hud: #f8fafc;
+      --text-glass-muted: #94a3b8;
+      --border-glass-hud: #334155;
+      --shadow-glass-hud: 0 4px 20px rgba(0, 0, 0, 0.5);
+      --kbd-bg: #090e18;
+      --kbd-text: #38bdf8;
+      --kbd-border: #1e293b;
+
       --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
       --shadow-md: 0 4px 12px 0 rgba(0, 0, 0, 0.45);
       --shadow-lg: 0 12px 32px 0 rgba(0, 0, 0, 0.65);
@@ -114,6 +125,17 @@
       --grid-minor: #f1f5f9;
       --grid-major: #e2e8f0;
       --wall-default: #0f172a;
+
+      /* Glassmorphic Floating HUD Tokens (Light) */
+      --bg-glass-hud: rgba(255, 255, 255, 0.92);
+      --bg-glass-hud-hover: rgba(241, 245, 249, 0.98);
+      --text-glass-hud: #0f172a;
+      --text-glass-muted: #64748b;
+      --border-glass-hud: #cbd5e1;
+      --shadow-glass-hud: 0 4px 20px rgba(0, 0, 0, 0.08);
+      --kbd-bg: #f1f5f9;
+      --kbd-text: #0284c7;
+      --kbd-border: #cbd5e1;
 
       --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06);
       --shadow-md: 0 4px 14px 0 rgba(0, 0, 0, 0.08);
@@ -609,26 +631,35 @@
       position: absolute;
       bottom: 16px;
       left: 16px;
-      background: rgba(13, 19, 31, 0.88);
-      backdrop-filter: blur(14px);
-      border: 1px solid var(--border-strong);
-      padding: 6px 12px;
+      background: var(--bg-glass-hud);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass-hud);
+      padding: 5px 14px;
       border-radius: var(--radius-pill);
-      color: var(--text-secondary);
+      color: var(--text-glass-hud);
       font-size: 11px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       pointer-events: none;
       z-index: var(--z-floating-hud);
-      box-shadow: var(--shadow-md);
+      box-shadow: var(--shadow-glass-hud);
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+    .scale-indicator span {
+      color: var(--text-glass-hud);
+    }
+    .scale-indicator .scale-sep {
+      color: var(--text-glass-muted);
+      opacity: 0.6;
     }
     .scale-indicator kbd {
-      background: var(--bg-input);
-      border: 1px solid var(--border-subtle);
-      color: var(--accent-cyan);
-      padding: 1px 4px;
-      border-radius: 3px;
+      background: var(--kbd-bg);
+      border: 1px solid var(--kbd-border);
+      color: var(--kbd-text);
+      padding: 1.5px 5px;
+      border-radius: 4px;
       font-size: 9.5px;
       font-family: var(--font-mono);
       font-weight: 700;
@@ -639,21 +670,23 @@
       position: absolute;
       bottom: 16px;
       right: 16px;
-      background: rgba(13, 19, 31, 0.88);
-      backdrop-filter: blur(14px);
-      border: 1px solid var(--border-strong);
-      padding: 4px;
+      background: var(--bg-glass-hud);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass-hud);
+      padding: 3px 6px;
       border-radius: var(--radius-pill);
       display: flex;
       align-items: center;
       gap: 3px;
       z-index: var(--z-floating-hud);
-      box-shadow: var(--shadow-md);
+      box-shadow: var(--shadow-glass-hud);
+      transition: background-color 0.2s ease, border-color 0.2s ease;
     }
     .nav-btn {
       background: transparent;
       border: none;
-      color: var(--text-main);
+      color: var(--text-glass-hud);
       font-size: 11px;
       font-weight: 700;
       padding: 4px 8px;
@@ -662,15 +695,19 @@
       transition: all 0.12s ease;
       user-select: none;
     }
-    .nav-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--accent-cyan); }
+    .nav-btn:hover {
+      background: var(--bg-glass-hud-hover);
+      color: var(--accent-cyan);
+    }
 
     /* Simulation Floating HUD */
     #sim-hud {
       position: absolute;
       top: 14px;
       right: 14px;
-      background: rgba(13, 19, 31, 0.92);
+      background: var(--bg-glass-hud);
       backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--accent-indigo);
       border-radius: var(--radius-xl);
       padding: 8px 14px;
@@ -678,8 +715,10 @@
       align-items: center;
       gap: 12px;
       z-index: var(--z-floating-hud);
-      box-shadow: var(--shadow-lg);
+      box-shadow: var(--shadow-glass-hud);
       animation: fadeIn 0.2s ease;
+      color: var(--text-glass-hud);
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
     @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
 
@@ -688,7 +727,7 @@
       flex-direction: column;
       align-items: center;
       padding: 0 8px;
-      border-right: 1px solid var(--border-strong);
+      border-right: 1px solid var(--border-glass-hud);
     }
     .sim-stat:last-child { border-right: none; }
     .sim-stat-val {
@@ -700,7 +739,7 @@
     .sim-stat-lbl {
       font-size: 9px;
       font-weight: 700;
-      color: var(--text-muted);
+      color: var(--text-glass-muted);
       text-transform: uppercase;
     }
 
@@ -731,14 +770,16 @@
       top: 14px;
       right: 14px;
       z-index: 20;
-      background: rgba(13, 19, 31, 0.92);
-      backdrop-filter: blur(12px);
+      background: var(--bg-glass-hud);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       padding: 5px;
       border-radius: var(--radius-lg);
-      border: 1px solid var(--border-strong);
+      border: 1px solid var(--border-glass-hud);
       display: flex;
       gap: 5px;
-      box-shadow: var(--shadow-lg);
+      box-shadow: var(--shadow-glass-hud);
+      transition: background-color 0.2s ease, border-color 0.2s ease;
     }
     .cam-btn {
       background: var(--bg-card);
@@ -1744,27 +1785,28 @@
         <g id="layer-smart-guides" pointer-events="none"></g>
       </svg>
 
-      <!-- Docked Scale & Shortcuts Status Bar -->
-      <div class="scale-indicator">
+      </div>
+
+      <!-- Docked Scale & Shortcuts Status Bar (Theme-Aware) -->
+      <div class="scale-indicator" id="scale-indicator">
         <span>📐 <strong>1:50</strong> (1m = 100px)</span>
-        <span>•</span>
+        <span class="scale-sep">•</span>
         <span>Cuadrícula 10cm</span>
-        <span>•</span>
+        <span class="scale-sep">•</span>
         <span><kbd>Shift+Clic</kbd> Multiselección</span>
-        <span>•</span>
+        <span class="scale-sep">•</span>
         <span><kbd>Ctrl+Z</kbd> Deshacer</span>
-        <span>•</span>
+        <span class="scale-sep">•</span>
         <span><kbd>R</kbd> Rotar</span>
       </div>
 
-      <!-- Floating 2D Navigation Controls -->
-      <div class="canvas-nav-controls">
+      <!-- Floating 2D Navigation Controls (Theme-Aware) -->
+      <div class="canvas-nav-controls" id="canvas-nav-controls">
         <button class="nav-btn" onclick="zoom2D(1.2)" title="Acercar (Zoom In)">🔍＋</button>
         <button class="nav-btn" onclick="reset2DZoom()" title="Restablecer Zoom">100%</button>
         <button class="nav-btn" onclick="zoom2D(0.8)" title="Alejar (Zoom Out)">🔍−</button>
         <button class="nav-btn" onclick="center2DView()" title="Centrar Vista">🎯</button>
       </div>
-    </div>
 
     <!-- 3D VIEW -->
     <div id="view-3d">
@@ -1778,7 +1820,7 @@
         <button class="cam-btn" onclick="reset3DCamera()" title="Restablecer Posición de Cámara">🎯 Centrar</button>
       </div>
 
-      <div style="position:absolute; bottom:16px; left:16px; z-index:10; background:rgba(15,23,42,0.92); backdrop-filter:blur(8px); padding:8px 14px; border-radius:var(--radius-md); border:1px solid var(--border-strong); font-size:11.5px; color:var(--text-main); line-height: 1.5; box-shadow:var(--shadow-md);">
+      <div style="position:absolute; bottom:16px; left:16px; z-index:10; background:var(--bg-glass-hud); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); padding:7px 14px; border-radius:var(--radius-pill); border:1px solid var(--border-glass-hud); font-size:11px; color:var(--text-glass-hud); line-height: 1.5; box-shadow:var(--shadow-glass-hud);">
         🖱️ <strong>Rotar:</strong> Clic Izquierdo &bull; <strong>Desplazar:</strong> Clic Derecho &bull; <strong>Zoom:</strong> Rueda del Mouse
       </div>
     </div>
@@ -6252,6 +6294,11 @@
       const v3d = document.getElementById('view-3d');
       if (v2d) v2d.style.display = mode === '2d' ? 'flex' : 'none';
       if (v3d) v3d.style.display = mode === '3d' ? 'block' : 'none';
+
+      const scaleInd = document.getElementById('scale-indicator');
+      const navCtrl = document.getElementById('canvas-nav-controls');
+      if (scaleInd) scaleInd.style.display = mode === '2d' ? 'flex' : 'none';
+      if (navCtrl) navCtrl.style.display = mode === '2d' ? 'flex' : 'none';
 
       if (mode === '3d') {
         if (!scene) init3D();
