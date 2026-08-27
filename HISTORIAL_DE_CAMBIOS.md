@@ -26,7 +26,24 @@
 
 ## 🚀 Registro Cronológico de Versiones & Mejoras
 
-### 🌟 Versión 4.7 (Actual) — Planograma 2D de Canastas & Orientación 3D Corregida
+### 🌟 Versión 4.8 (Actual) — Simulación Inteligente con A* Pathfinding & Customer Journey Lógico
+* **🧭 Navegación A\* sobre Malla de Obstáculos Dinámica (NavGrid):**
+  * **Cero Atravesamiento de Muebles:** Matriz de navegación espacial de alta resolución ($12\text{px}$) que rasteriza automáticamente góndolas, murales, cámaras, islas, cajas y muros con un margen de seguridad perimetral ($11\text{px}$).
+  * **Suavizado de Trayectorias (String-Pulling & Raycasting):** Convierte escalones de cuadrícula en líneas de marcha directas y fluidas a través de los pasillos abiertos.
+  * **Adaptación en Tiempo Real:** Al mover, rotar o redimensionar cualquier mueble en el plano 2D, la malla de navegación se actualiza instantáneamente.
+* **🚫 Cero Rebotes & Cinemática Natural:**
+  * **Interpolación Angular Continua:** Giro progresivo del avatar y del carrito según el vector de avance hacia los waypoints.
+  * **Fuerza Social de Separación (Soft Flocking):** Los clientes reducen el solapamiento con un suave desvío lateral sin rebotar ni reflejar velocidades.
+* **🛒 Ciclo de Vida Lógico del Cliente (Customer Journey):**
+  1. **Ingreso:** Entrada por puertas designadas (`ACCESO 01 / 02`).
+  2. **Equipamiento:** Recogida de carrito 🛒 en `EST-01` o canasta 🧺 en `CAN-01`.
+  3. **Compras:** Recorrido por 2 a 5 estantes/categorías diferentes, con detención de compra ($1.6 - 3.4\text{s}$), giro hacia el mueble y micro-burbuja de producto (🍎, 🥦, 🥛, 🍞, 🧀, 🥩, 🥚, 🌾) que llena visualmente el carrito.
+  4. **Cobro:** Selección y cola en cajas (`POS-01 / 02 / 03`), pausa de cobro con halo verde (`💳 Pago POS`).
+  5. **Salida:** Egreso por puertas de salida (`ACCESO 03 / 04`) y conteo de estadísticas.
+
+---
+
+### 🌟 Versión 4.7 — Planograma 2D de Canastas & Orientación 3D Corregida
 * **📦 Cuadritos y Divisiones de Canastas en 2D:**
   * Dibujo paramétrico de la retícula de canastas individuales en el plano 2D:
     * **Mural Frío (`CAM-01`):** 21 canastas verdes individuales a lo largo de los $7.37\text{m}$.

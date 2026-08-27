@@ -790,8 +790,22 @@
     .modal-opt-btn .opt-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
     .shopper-agent {
-      transition: transform 0.05s linear;
-      filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+      pointer-events: none;
+      filter: drop-shadow(0 2px 5px rgba(0,0,0,0.55));
+    }
+    .shopper-badge {
+      animation: simBadgePop 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes simBadgePop {
+      0% { transform: translate(0, -8px) scale(0.6); opacity: 0; }
+      100% { transform: translate(0, -20px) scale(1); opacity: 1; }
+    }
+    .shopper-paying-glow {
+      animation: simPayGlow 1.4s infinite ease-in-out;
+    }
+    @keyframes simPayGlow {
+      0%, 100% { stroke: #22c55e; stroke-width: 1.5; }
+      50% { stroke: #86efac; stroke-width: 2.5; filter: drop-shadow(0 0 5px rgba(34,197,94,0.7)); }
     }
   </style>
 </head>
@@ -1885,16 +1899,523 @@
     }
 
     // ==========================================================================
-    // 4. CUSTOMER JOURNEY & SHOPPER SIMULATION
+    // 4. CUSTOMER JOURNEY & SHOPPER SIMULATION (A* PATHFINDING + REALISTIC AGENTS)
     // ==========================================================================
     let isSimMode = false;
     let isSimRunning = false;
     let simSpeed = 1;
     let shoppers = [];
     let simAnimFrame = null;
+    let simLastTime = 0;
     let simStats = { completed: 0, totalTime: 0 };
+    let activeNavGrid = null;
+    let isNavGridDirty = true;
 
-    const shopperColors = ['#38bdf8', '#f97316', '#22c55e', '#ec4899', '#a855f7', '#fbbf24', '#06b6d4'];
+    const shopperColors = ['#38bdf8', '#f97316', '#22c55e', '#ec4899', '#a855f7', '#fbbf24', '#06b6d4', '#e11d48', '#10b981'];
+
+    // Fast Binary Min-Heap Priority Queue for A* Pathfinding
+    class FastPriorityQueue {
+      constructor() {
+        this.heap = [];
+        this.priorities = [];
+      }
+      get size() { return this.heap.length; }
+      push(item, priority) {
+        this.heap.push(item);
+        this.priorities.push(priority);
+        this._bubbleUp(this.heap.length - 1);
+      }
+      pop() {
+        if (this.heap.length === 0) return null;
+        const top = this.heap[0];
+        const bottomItem = this.heap.pop();
+        const bottomPrio = this.priorities.pop();
+        if (this.heap.length > 0) {
+          this.heap[0] = bottomItem;
+          this.priorities[0] = bottomPrio;
+          this._sinkDown(0);
+        }
+        return top;
+      }
+      _bubbleUp(i) {
+        while (i > 0) {
+          const p = (i - 1) >> 1;
+          if (this.priorities[i] < this.priorities[p]) {
+            this._swap(i, p);
+            i = p;
+          } else break;
+        }
+      }
+      _sinkDown(i) {
+        const len = this.heap.length;
+        while (true) {
+          let left = (i << 1) + 1;
+          let right = left + 1;
+          let smallest = i;
+          if (left < len && this.priorities[left] < this.priorities[smallest]) smallest = left;
+          if (right < len && this.priorities[right] < this.priorities[smallest]) smallest = right;
+          if (smallest !== i) {
+            this._swap(i, smallest);
+            i = smallest;
+          } else break;
+        }
+      }
+      _swap(i, j) {
+        const tH = this.heap[i]; this.heap[i] = this.heap[j]; this.heap[j] = tH;
+        const tP = this.priorities[i]; this.priorities[i] = this.priorities[j]; this.priorities[j] = tP;
+      }
+    }
+
+    // High-resolution Navigation Grid for Collision Avoidance & Smooth A*
+    const SIM_GRID_CELL = 12; // 12px grid cell size
+
+    class NavGrid {
+      constructor(bldg, items, archs) {
+        this.cellSize = SIM_GRID_CELL;
+        this.originX = bldg.x || 60;
+        this.originY = bldg.y || 80;
+        this.width = bldg.w || 980;
+        this.height = bldg.h || 1180;
+        this.cols = Math.ceil(this.width / this.cellSize);
+        this.rows = Math.ceil(this.height / this.cellSize);
+        this.grid = new Uint8Array(this.cols * this.rows); // 0 = walkable, 1 = obstacle
+        this.build(bldg, items, archs);
+      }
+
+      idx(c, r) {
+        if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) return -1;
+        return r * this.cols + c;
+      }
+
+      isWalkable(c, r) {
+        const i = this.idx(c, r);
+        return i !== -1 && this.grid[i] === 0;
+      }
+
+      worldToGrid(x, y) {
+        return {
+          c: Math.floor((x - this.originX) / this.cellSize),
+          r: Math.floor((y - this.originY) / this.cellSize)
+        };
+      }
+
+      gridToWorld(c, r) {
+        return {
+          x: this.originX + (c + 0.5) * this.cellSize,
+          y: this.originY + (r + 0.5) * this.cellSize
+        };
+      }
+
+      build(bldg, items, archs) {
+        this.grid.fill(0);
+
+        // 1. Perimeter boundary walls: mark outer border cells as blocked
+        const borderThicknessCells = Math.ceil(18 / this.cellSize);
+        for (let r = 0; r < this.rows; r++) {
+          for (let c = 0; c < this.cols; c++) {
+            if (c < borderThicknessCells || c >= this.cols - borderThicknessCells ||
+                r < borderThicknessCells || r >= this.rows - borderThicknessCells) {
+              this.grid[r * this.cols + c] = 1;
+            }
+          }
+        }
+
+        // 2. Open walkable transit channels through doors
+        const doors = archs.filter(el => el.type === 'door' || el.id.includes('door') || el.id.includes('ACCESO') || el.id.includes('SERV'));
+        doors.forEach(door => {
+          const minC = Math.max(0, Math.floor((door.x - this.originX - 12) / this.cellSize));
+          const maxC = Math.min(this.cols - 1, Math.ceil((door.x + door.w - this.originX + 12) / this.cellSize));
+          const minR = Math.max(0, Math.floor((door.y - this.originY - 18) / this.cellSize));
+          const maxR = Math.min(this.rows - 1, Math.ceil((door.y + door.h - this.originY + 18) / this.cellSize));
+
+          for (let r = minR; r <= maxR; r++) {
+            for (let c = minC; c <= maxC; c++) {
+              this.grid[r * this.cols + c] = 0;
+            }
+          }
+        });
+
+        // 3. Mark non-door architectural elements (rooms, columns) as obstacles
+        archs.forEach(el => {
+          if (el.type === 'room' || el.type === 'wall' || el.type === 'pillar') {
+            this.markObstacle(el.x, el.y, el.w, el.h, el.rot || 0, 6);
+          }
+        });
+
+        // 4. Mark all furniture items as solid obstacles with clearance margin
+        items.forEach(item => {
+          this.markObstacle(item.x, item.y, item.w, item.h, item.rot || 0, 11);
+        });
+      }
+
+      markObstacle(x, y, w, h, rot, padding) {
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        const rad = (rot || 0) * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        const hw = w / 2 + padding;
+        const hh = h / 2 + padding;
+
+        const boundHalfW = hw * Math.abs(cos) + hh * Math.abs(sin);
+        const boundHalfH = hw * Math.abs(sin) + hh * Math.abs(cos);
+
+        const minC = Math.max(0, Math.floor((cx - boundHalfW - this.originX) / this.cellSize));
+        const maxC = Math.min(this.cols - 1, Math.ceil((cx + boundHalfW - this.originX) / this.cellSize));
+        const minR = Math.max(0, Math.floor((cy - boundHalfH - this.originY) / this.cellSize));
+        const maxR = Math.min(this.rows - 1, Math.ceil((cy + boundHalfH - this.originY) / this.cellSize));
+
+        for (let r = minR; r <= maxR; r++) {
+          for (let c = minC; c <= maxC; c++) {
+            const pt = this.gridToWorld(c, r);
+            const dx = pt.x - cx;
+            const dy = pt.y - cy;
+            const localX = dx * cos + dy * sin;
+            const localY = -dx * sin + dy * cos;
+
+            if (Math.abs(localX) <= hw && Math.abs(localY) <= hh) {
+              this.grid[r * this.cols + c] = 1;
+            }
+          }
+        }
+      }
+
+      findNearestWalkable(worldX, worldY, maxRadius = 20) {
+        const { c: startC, r: startR } = this.worldToGrid(worldX, worldY);
+        if (this.isWalkable(startC, startR)) {
+          return this.gridToWorld(startC, startR);
+        }
+        for (let rad = 1; rad <= maxRadius; rad++) {
+          for (let dc = -rad; dc <= rad; dc++) {
+            for (let dr = -rad; dr <= rad; dr++) {
+              if (Math.abs(dc) === rad || Math.abs(dr) === rad) {
+                const nc = startC + dc;
+                const nr = startR + dr;
+                if (this.isWalkable(nc, nr)) {
+                  return this.gridToWorld(nc, nr);
+                }
+              }
+            }
+          }
+        }
+        return { x: worldX, y: worldY };
+      }
+
+      isLineWalkable(p1, p2) {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const dist = Math.hypot(dx, dy);
+        const steps = Math.max(2, Math.ceil(dist / (this.cellSize * 0.45)));
+
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const x = p1.x + dx * t;
+          const y = p1.y + dy * t;
+          const { c, r } = this.worldToGrid(x, y);
+          if (!this.isWalkable(c, r)) return false;
+        }
+        return true;
+      }
+
+      findPath(startWorld, endWorld) {
+        const s = this.findNearestWalkable(startWorld.x, startWorld.y);
+        const e = this.findNearestWalkable(endWorld.x, endWorld.y);
+
+        const start = this.worldToGrid(s.x, s.y);
+        const goal = this.worldToGrid(e.x, e.y);
+
+        if (start.c === goal.c && start.r === goal.r) {
+          return [{ x: startWorld.x, y: startWorld.y }, { x: endWorld.x, y: endWorld.y }];
+        }
+
+        const startIdx = this.idx(start.c, start.r);
+        const goalIdx = this.idx(goal.c, goal.r);
+
+        if (startIdx === -1 || goalIdx === -1) return [s, e];
+
+        const openSet = new FastPriorityQueue();
+        const gScore = new Float32Array(this.cols * this.rows);
+        const parent = new Int32Array(this.cols * this.rows);
+        const inOpen = new Uint8Array(this.cols * this.rows);
+        const closed = new Uint8Array(this.cols * this.rows);
+
+        gScore.fill(Infinity);
+        parent.fill(-1);
+
+        gScore[startIdx] = 0;
+        const h0 = Math.hypot(goal.c - start.c, goal.r - start.r);
+        openSet.push(startIdx, h0);
+        inOpen[startIdx] = 1;
+
+        const dirs = [
+          { dc: 0, dr: -1, cost: 1.0 },
+          { dc: 0, dr: 1, cost: 1.0 },
+          { dc: -1, dr: 0, cost: 1.0 },
+          { dc: 1, dr: 0, cost: 1.0 },
+          { dc: 1, dr: 1, cost: 1.414 },
+          { dc: -1, dr: 1, cost: 1.414 },
+          { dc: 1, dr: -1, cost: 1.414 },
+          { dc: -1, dr: -1, cost: 1.414 }
+        ];
+
+        let found = false;
+        let iterations = 0;
+        const maxIterations = 4500;
+
+        while (openSet.size > 0 && iterations++ < maxIterations) {
+          const currentIdx = openSet.pop();
+          inOpen[currentIdx] = 0;
+          closed[currentIdx] = 1;
+
+          if (currentIdx === goalIdx) {
+            found = true;
+            break;
+          }
+
+          const currC = currentIdx % this.cols;
+          const currR = Math.floor(currentIdx / this.cols);
+          const currentG = gScore[currentIdx];
+
+          for (let i = 0; i < 8; i++) {
+            const d = dirs[i];
+            const nC = currC + d.dc;
+            const nR = currR + d.dr;
+            const nIdx = this.idx(nC, nR);
+
+            if (nIdx === -1 || closed[nIdx] || !this.isWalkable(nC, nR)) continue;
+
+            // Corner-cutting check: do not cut between two blocked adjacent cells
+            if (d.dc !== 0 && d.dr !== 0) {
+              if (!this.isWalkable(currC + d.dc, currR) || !this.isWalkable(currC, currR + d.dr)) {
+                continue;
+              }
+            }
+
+            const tentativeG = currentG + d.cost;
+            if (tentativeG < gScore[nIdx]) {
+              parent[nIdx] = currentIdx;
+              gScore[nIdx] = tentativeG;
+              const h = Math.hypot(goal.c - nC, goal.r - nR);
+              const f = tentativeG + h;
+
+              if (!inOpen[nIdx]) {
+                openSet.push(nIdx, f);
+                inOpen[nIdx] = 1;
+              }
+            }
+          }
+        }
+
+        if (!found) {
+          return [s, e];
+        }
+
+        // Reconstruct raw path
+        const rawPath = [];
+        let curr = goalIdx;
+        while (curr !== -1) {
+          const c = curr % this.cols;
+          const r = Math.floor(curr / this.cols);
+          rawPath.push(this.gridToWorld(c, r));
+          curr = parent[curr];
+        }
+        rawPath.reverse();
+
+        // Path Smoothing with Raycasting Line-of-Sight
+        if (rawPath.length <= 2) {
+          return [s, ...rawPath, e];
+        }
+
+        const smoothed = [s, rawPath[0]];
+        let anchorIdx = 0;
+
+        while (anchorIdx < rawPath.length - 1) {
+          let furthest = anchorIdx + 1;
+          for (let testIdx = rawPath.length - 1; testIdx > anchorIdx + 1; testIdx--) {
+            if (this.isLineWalkable(rawPath[anchorIdx], rawPath[testIdx])) {
+              furthest = testIdx;
+              break;
+            }
+          }
+          smoothed.push(rawPath[furthest]);
+          anchorIdx = furthest;
+        }
+        smoothed.push(e);
+
+        return smoothed;
+      }
+    }
+
+    function getNavGrid() {
+      if (!activeNavGrid || isNavGridDirty) {
+        activeNavGrid = new NavGrid(buildingPerimeter, storeItems, archElements);
+        isNavGridDirty = false;
+      }
+      return activeNavGrid;
+    }
+
+    function getShelfInteractionPoint(item, grid) {
+      const cx = item.x + item.w / 2;
+      const cy = item.y + item.h / 2;
+      const rot = (item.rot || 0) % 360;
+
+      const pad = 24;
+      const candidates = [];
+
+      if (rot === 90 || rot === 270) {
+        const halfW = item.h / 2;
+        const halfH = item.w / 2;
+        candidates.push({ x: cx, y: cy - halfH - pad });
+        candidates.push({ x: cx, y: cy + halfH + pad });
+        candidates.push({ x: cx - halfW - pad, y: cy });
+        candidates.push({ x: cx + halfW + pad, y: cy });
+      } else {
+        const halfW = item.w / 2;
+        const halfH = item.h / 2;
+        candidates.push({ x: cx, y: cy - halfH - pad });
+        candidates.push({ x: cx, y: cy + halfH + pad });
+        candidates.push({ x: cx - halfW - pad, y: cy });
+        candidates.push({ x: cx + halfW + pad, y: cy });
+      }
+
+      const walkable = candidates.filter(pt => {
+        const g = grid.worldToGrid(pt.x, pt.y);
+        return grid.isWalkable(g.c, g.r);
+      });
+
+      if (walkable.length > 0) {
+        return walkable[0];
+      }
+      return grid.findNearestWalkable(cx, cy, 22);
+    }
+
+    function getEmojiForItem(item) {
+      const type = item.type || '';
+      const name = (item.name || '').toLowerCase();
+
+      if (type === 'fruit' || type === 'fruit_crates' || name.includes('fru') || name.includes('naran') || name.includes('repol') || name.includes('banan')) {
+        const fruitEmojis = ['🍎', '🍊', '🍌', '🥑', '🥦', '🥕', '🍇', '🍉', '🥔', '🍋'];
+        return fruitEmojis[Math.floor(Math.random() * fruitEmojis.length)];
+      }
+      if (type === 'cold' || type === 'freeze' || name.includes('frio') || name.includes('cam') || name.includes('lact')) {
+        const coldEmojis = ['🥛', '🧀', '🥩', '🍗', '🍦', '🧊', '🧈', '🥤', '🥓'];
+        return coldEmojis[Math.floor(Math.random() * coldEmojis.length)];
+      }
+      if (type === 'dry' || type === 'produce_wall' || name.includes('seco') || name.includes('mural') || name.includes('abar')) {
+        const dryEmojis = ['🍞', '🥫', '🍝', '🍪', '🍫', '🧃', '☕', '🧂', '🥖'];
+        return dryEmojis[Math.floor(Math.random() * dryEmojis.length)];
+      }
+      if (type === 'grains' || name.includes('gran') || name.includes('sem')) {
+        const grainEmojis = ['🌾', '🥜', '🍚', '🌽', '🌰'];
+        return grainEmojis[Math.floor(Math.random() * grainEmojis.length)];
+      }
+      if (type === 'eggs' || name.includes('huev')) {
+        return '🥚';
+      }
+      if (type === 'checkout' || name.includes('pos') || name.includes('caja')) {
+        return '💳';
+      }
+      return '🛍️';
+    }
+
+    function lerpAngle(current, target, factor) {
+      let diff = (target - current) % (2 * Math.PI);
+      if (diff < -Math.PI) diff += 2 * Math.PI;
+      if (diff > Math.PI) diff -= 2 * Math.PI;
+      return current + diff * Math.min(1, factor);
+    }
+
+    function createShopperPlan() {
+      const grid = getNavGrid();
+
+      let doors = archElements.filter(el => el.type === 'door' || el.id.includes('door') || el.id.includes('ACCESO'));
+      if (doors.length === 0) {
+        doors = [
+          { id: 'door-1', name: 'ACCESO 01', x: 80, y: 72, w: 100, h: 16 },
+          { id: 'door-2', name: 'ACCESO 02', x: 240, y: 72, w: 100, h: 16 },
+          { id: 'door-3', name: 'ACCESO 03', x: 450, y: 72, w: 140, h: 16 },
+          { id: 'door-4', name: 'ACCESO 04', x: 710, y: 72, w: 120, h: 16 }
+        ];
+      }
+
+      let entranceDoors = doors.filter(d => d.id.includes('1') || d.id.includes('2') || d.name.toLowerCase().includes('entrad') || d.y < 150);
+      if (entranceDoors.length === 0) entranceDoors = doors;
+      const startDoor = entranceDoors[Math.floor(Math.random() * entranceDoors.length)];
+      const startPos = grid.findNearestWalkable(startDoor.x + startDoor.w / 2, startDoor.y + startDoor.h / 2 + 10);
+
+      let exitDoors = doors.filter(d => d.id.includes('3') || d.id.includes('4') || d.name.toLowerCase().includes('salid') || d.y < 150);
+      if (exitDoors.length === 0) exitDoors = doors;
+      const exitDoor = exitDoors[Math.floor(Math.random() * exitDoors.length)];
+      const exitPos = grid.findNearestWalkable(exitDoor.x + exitDoor.w / 2, exitDoor.y + exitDoor.h / 2 - 10);
+
+      const hasCart = Math.random() < 0.35;
+      const hasBasket = !hasCart && Math.random() < 0.65;
+
+      const stops = [];
+
+      // Equipment Station
+      if (hasCart) {
+        const cartStation = storeItems.find(i => i.type === 'carts' || i.id.includes('coche') || i.name.toLowerCase().includes('carrito'));
+        if (cartStation) {
+          const pt = getShelfInteractionPoint(cartStation, grid);
+          stops.push({ type: 'cart_station', targetPos: pt, item: cartStation, label: '🛒 Carritos' });
+        }
+      } else if (hasBasket) {
+        const basketStation = storeItems.find(i => i.type === 'baskets_station' || i.id.includes('canasta'));
+        if (basketStation) {
+          const pt = getShelfInteractionPoint(basketStation, grid);
+          stops.push({ type: 'basket_station', targetPos: pt, item: basketStation, label: '🧺 Canastas' });
+        }
+      }
+
+      // 2 to 5 diverse Shopping Shelves
+      const validShelves = storeItems.filter(i => i.type !== 'carts' && i.type !== 'baskets_station' && i.type !== 'checkout');
+      if (validShelves.length > 0) {
+        const numStops = Math.min(validShelves.length, 2 + Math.floor(Math.random() * 4));
+        const shuffled = [...validShelves].sort(() => Math.random() - 0.5);
+        for (let i = 0; i < numStops; i++) {
+          const shelf = shuffled[i];
+          const pt = getShelfInteractionPoint(shelf, grid);
+          stops.push({
+            type: 'shelf',
+            targetPos: pt,
+            item: shelf,
+            emoji: getEmojiForItem(shelf),
+            label: shelf.name.split('|')[0].trim()
+          });
+        }
+      }
+
+      // Checkout POS
+      const checkouts = storeItems.filter(i => i.type === 'checkout' || i.id.includes('caja') || i.id.includes('pos'));
+      if (checkouts.length > 0) {
+        const chosenPOS = checkouts[Math.floor(Math.random() * checkouts.length)];
+        const pt = getShelfInteractionPoint(chosenPOS, grid);
+        stops.push({
+          type: 'checkout',
+          targetPos: pt,
+          item: chosenPOS,
+          emoji: '💳',
+          label: 'POS Cobro'
+        });
+      }
+
+      // Exit Door
+      stops.push({
+        type: 'exit',
+        targetPos: exitPos,
+        door: exitDoor,
+        label: 'Salida'
+      });
+
+      return {
+        startPos,
+        stops,
+        hasCart,
+        hasBasket
+      };
+    }
 
     function toggleSimMode() {
       isSimMode = !isSimMode;
@@ -1906,7 +2427,7 @@
 
       if (isSimMode) {
         startSimulation();
-        showToast('🚶‍♂️ Simulador de flujo comercial INICIADO');
+        showToast('🚶‍♂️ Simulador comercial inteligente INICIADO (A* Pathfinding Activo)');
       } else {
         stopSimulation();
       }
@@ -1915,7 +2436,10 @@
     function toggleSimulation() {
       isSimRunning = !isSimRunning;
       document.getElementById('btn-sim-play').textContent = isSimRunning ? '⏸ Pausar' : '▶ Reanudar';
-      if (isSimRunning) runSimLoop();
+      if (isSimRunning) {
+        simLastTime = performance.now();
+        runSimLoop();
+      }
     }
 
     function cycleSimSpeed() {
@@ -1932,6 +2456,7 @@
       document.getElementById('sim-completed').textContent = '0';
       document.getElementById('sim-avg-time').textContent = '0s';
       document.getElementById('layer-simulation').innerHTML = '';
+      isNavGridDirty = true;
       spawnInitialShoppers();
     }
 
@@ -1939,6 +2464,7 @@
       isSimRunning = true;
       document.getElementById('btn-sim-play').textContent = '⏸ Pausar';
       resetSimulation();
+      simLastTime = performance.now();
       runSimLoop();
     }
 
@@ -1949,8 +2475,8 @@
     }
 
     function spawnInitialShoppers() {
-      for (let i = 0; i < 6; i++) {
-        spawnShopper(i * 1200);
+      for (let i = 0; i < 5; i++) {
+        spawnShopper(i * 1000);
       }
     }
 
@@ -1958,164 +2484,320 @@
       setTimeout(() => {
         if (!isSimMode || !isSimRunning) return;
 
-        // Detección dinámica de todas las puertas del local (Entradas, Salidas, Bodega, Comedor, Servicios)
-        let allDoors = archElements.filter(el => el.type === 'door' || el.id.includes('door') || el.id.includes('ACCESO') || el.id.includes('SERV'));
-        if (allDoors.length === 0) {
-          allDoors = [
-            { x: 80, y: 72, w: 100, h: 16, name: 'ACCESO 01' },
-            { x: 240, y: 72, w: 100, h: 16, name: 'ACCESO 02' },
-            { x: 450, y: 72, w: 140, h: 16, name: 'ACCESO 03' },
-            { x: 710, y: 72, w: 120, h: 16, name: 'ACCESO 04' },
-            { x: 220, y: 1250, w: 120, h: 20, name: 'Puerta Bodega' },
-            { x: 860, y: 1250, w: 120, h: 20, name: 'Puerta Comedor' }
-          ];
-        }
+        const plan = createShopperPlan();
+        if (!plan.stops || plan.stops.length === 0) return;
 
-        // Selección aleatoria de puerta de inicio y puerta de salida
-        const startDoorObj = allDoors[Math.floor(Math.random() * allDoors.length)];
-        const startX = startDoorObj.x + startDoorObj.w / 2;
-        const startY = startDoorObj.y + startDoorObj.h / 2;
+        const grid = getNavGrid();
+        const initialPath = grid.findPath(plan.startPos, plan.stops[0].targetPos);
 
-        const exitDoorObj = allDoors[Math.floor(Math.random() * allDoors.length)];
-        const exitX = exitDoorObj.x + exitDoorObj.w / 2;
-        const exitY = exitDoorObj.y + exitDoorObj.h / 2;
-
-        // Puntos y pasillos de circulación de la tienda
-        const aisleNodes = [
-          { x: 200, y: 220 }, // Carritos / Vitrinas
-          { x: 200, y: 550 }, // Frío Fruver Norte
-          { x: 200, y: 880 }, // Frío Fruver Sur
-          { x: 200, y: 1100 }, // Esquina inferior izquierda
-          { x: 440, y: 1100 }, // Granos Tolvas y semillas
-          { x: 440, y: 800 },  // Pasillo Central Fruver Sur
-          { x: 440, y: 500 },  // Pasillo Central Fruver Norte
-          { x: 440, y: 240 },  // Frente Cajas de Cobro
-          { x: 750, y: 240 },  // Caja rápida Express
-          { x: 780, y: 550 },  // Pasillo Mural Seco Norte
-          { x: 780, y: 880 },  // Pasillo Mural Seco Sur
-          { x: 780, y: 1100 }  // Mueble Huevos / Salida Comedor
-        ];
-
-        // Construir waypoints dinámicos
-        const waypoints = [{ x: startX, y: startY }];
-
-        // Conectar al pasillo más cercano al punto de entrada
-        let nearestStart = aisleNodes[0];
-        let minDist = 99999;
-        aisleNodes.forEach(node => {
-          const d = Math.hypot(node.x - startX, node.y - startY);
-          if (d < minDist) { minDist = d; nearestStart = node; }
-        });
-        waypoints.push({ x: nearestStart.x, y: nearestStart.y });
-
-        // Recorrer 2 a 4 secciones aleatorias de la tienda
-        const numVisits = 2 + Math.floor(Math.random() * 3);
-        let currNode = nearestStart;
-        for (let w = 0; w < numVisits; w++) {
-          const candidates = aisleNodes.filter(n => n !== currNode);
-          currNode = candidates[Math.floor(Math.random() * candidates.length)];
-          waypoints.push({ x: currNode.x, y: currNode.y });
-        }
-
-        // Conectar al pasillo más cercano a la puerta de salida elegida
-        let nearestExit = aisleNodes[0];
-        minDist = 99999;
-        aisleNodes.forEach(node => {
-          const d = Math.hypot(node.x - exitX, node.y - exitY);
-          if (d < minDist) { minDist = d; nearestExit = node; }
-        });
-        if (waypoints[waypoints.length - 1] !== nearestExit) {
-          waypoints.push({ x: nearestExit.x, y: nearestExit.y });
-        }
-
-        // Llegada a la puerta de salida
-        waypoints.push({ x: exitX, y: exitY });
-
-        const hasCart = Math.random() < 0.35;
-        const hasBasket = !hasCart && Math.random() < 0.65;
+        const initialHeading = initialPath.length > 1
+          ? Math.atan2(initialPath[1].y - plan.startPos.y, initialPath[1].x - plan.startPos.x)
+          : Math.PI / 2;
 
         const shopper = {
-          id: 'shopper-' + Date.now() + '-' + Math.random(),
-          x: startX,
-          y: startY,
+          id: 'shopper-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+          x: plan.startPos.x,
+          y: plan.startPos.y,
           color: shopperColors[Math.floor(Math.random() * shopperColors.length)],
-          waypoints: waypoints,
-          targetIdx: 1,
-          speed: 1.8 + Math.random() * 1.0,
-          startTime: Date.now(),
-          hasCart: hasCart,
-          hasBasket: hasBasket
+          speed: 1.6 + Math.random() * 0.8,
+          heading: initialHeading,
+          targetHeading: initialHeading,
+          hasCart: plan.hasCart,
+          hasBasket: plan.hasBasket,
+          cartItems: [],
+          cartColors: [],
+          stops: plan.stops,
+          stopIdx: 0,
+          currentPath: initialPath,
+          pathIdx: 1,
+          state: 'WALKING', // 'WALKING', 'BROWSING', 'PAYING', 'EXITED'
+          timer: 0,
+          actionEmoji: '',
+          actionLabel: '',
+          startTime: Date.now()
         };
 
         shoppers.push(shopper);
       }, delay);
     }
 
+    function handleStopArrival(s) {
+      const stop = s.stops[s.stopIdx];
+      if (!stop) {
+        s.state = 'EXITED';
+        return;
+      }
+
+      if (stop.type === 'cart_station') {
+        s.hasCart = true;
+        s.actionEmoji = '🛒';
+        s.actionLabel = 'Carrito';
+        s.state = 'BROWSING';
+        s.timer = 0.8;
+      } else if (stop.type === 'basket_station') {
+        s.hasBasket = true;
+        s.actionEmoji = '🧺';
+        s.actionLabel = 'Canasta';
+        s.state = 'BROWSING';
+        s.timer = 0.8;
+      } else if (stop.type === 'shelf') {
+        s.state = 'BROWSING';
+        s.timer = 1.6 + Math.random() * 1.8;
+        s.actionEmoji = stop.emoji || '🛍️';
+        s.actionLabel = stop.label || '';
+        // Face the shelf
+        if (stop.item) {
+          const cx = stop.item.x + stop.item.w / 2;
+          const cy = stop.item.y + stop.item.h / 2;
+          s.targetHeading = Math.atan2(cy - s.y, cx - s.x);
+        }
+      } else if (stop.type === 'checkout') {
+        s.state = 'PAYING';
+        s.timer = 2.2 + Math.random() * 1.8;
+        s.actionEmoji = '💳';
+        s.actionLabel = 'Pago POS';
+      } else if (stop.type === 'exit') {
+        s.state = 'EXITED';
+      }
+    }
+
     function runSimLoop() {
       if (!isSimRunning || !isSimMode) return;
 
+      const now = performance.now();
+      const dt = Math.min(60, (now - (simLastTime || now))) / 1000;
+      simLastTime = now;
+
+      const grid = getNavGrid();
       const layer = document.getElementById('layer-simulation');
       layer.innerHTML = '';
 
-      const now = Date.now();
       const finished = [];
 
+      // 1. Update Agent Logic & Path Navigation
       for (let i = 0; i < shoppers.length; i++) {
         const s = shoppers[i];
-        const target = s.waypoints[s.targetIdx];
 
-        if (!target) {
-          finished.push(i);
-          continue;
-        }
-
-        const dx = target.x - s.x;
-        const dy = target.y - s.y;
-        const dist = Math.hypot(dx, dy);
-
-        const step = s.speed * simSpeed * 1.5;
-
-        if (dist <= step) {
-          s.x = target.x;
-          s.y = target.y;
-          s.targetIdx++;
-          if (s.targetIdx >= s.waypoints.length) {
-            finished.push(i);
+        if (s.state === 'BROWSING') {
+          s.timer -= dt * simSpeed;
+          s.heading = lerpAngle(s.heading, s.targetHeading, 0.12 * simSpeed);
+          if (s.timer <= 0) {
+            if (s.actionEmoji && s.actionEmoji !== '🛒' && s.actionEmoji !== '🧺') {
+              s.cartItems.push(s.actionEmoji);
+              s.cartColors.push(s.color);
+            }
+            s.stopIdx++;
+            if (s.stopIdx < s.stops.length) {
+              s.currentPath = grid.findPath({ x: s.x, y: s.y }, s.stops[s.stopIdx].targetPos);
+              s.pathIdx = 0;
+              s.state = 'WALKING';
+            } else {
+              s.state = 'EXITED';
+            }
           }
-        } else {
-          s.x += (dx / dist) * step;
-          s.y += (dy / dist) * step;
+        } else if (s.state === 'PAYING') {
+          s.timer -= dt * simSpeed;
+          if (s.timer <= 0) {
+            s.actionEmoji = '🧾';
+            s.stopIdx++;
+            if (s.stopIdx < s.stops.length) {
+              s.currentPath = grid.findPath({ x: s.x, y: s.y }, s.stops[s.stopIdx].targetPos);
+              s.pathIdx = 0;
+              s.state = 'WALKING';
+            } else {
+              s.state = 'EXITED';
+            }
+          }
+        } else if (s.state === 'WALKING') {
+          const wp = s.currentPath[s.pathIdx];
+          if (!wp) {
+            s.stopIdx++;
+            if (s.stopIdx < s.stops.length) {
+              s.currentPath = grid.findPath({ x: s.x, y: s.y }, s.stops[s.stopIdx].targetPos);
+              s.pathIdx = 0;
+            } else {
+              s.state = 'EXITED';
+            }
+            continue;
+          }
+
+          const dx = wp.x - s.x;
+          const dy = wp.y - s.y;
+          const dist = Math.hypot(dx, dy);
+
+          const targetAngle = Math.atan2(dy, dx);
+          s.heading = lerpAngle(s.heading, targetAngle, 0.18 * simSpeed);
+
+          const moveStep = s.speed * simSpeed * 60 * dt;
+
+          if (dist <= moveStep) {
+            s.x = wp.x;
+            s.y = wp.y;
+            s.pathIdx++;
+            if (s.pathIdx >= s.currentPath.length) {
+              handleStopArrival(s);
+            }
+          } else {
+            s.x += Math.cos(s.heading) * moveStep;
+            s.y += Math.sin(s.heading) * moveStep;
+          }
         }
+
+        if (s.state === 'EXITED') {
+          finished.push(i);
+        }
+      }
+
+      // 2. Soft Social Force (Gentle spacing between shoppers, NEVER bounce)
+      for (let i = 0; i < shoppers.length; i++) {
+        for (let j = i + 1; j < shoppers.length; j++) {
+          const a = shoppers[i];
+          const b = shoppers[j];
+          if (a.state === 'EXITED' || b.state === 'EXITED') continue;
+
+          const sepDx = b.x - a.x;
+          const sepDy = b.y - a.y;
+          const sepDist = Math.hypot(sepDx, sepDy);
+          const minDist = (a.hasCart || b.hasCart) ? 22 : 17;
+
+          if (sepDist < minDist && sepDist > 0.1) {
+            const overlap = (minDist - sepDist) * 0.08 * simSpeed;
+            const nx = sepDx / sepDist;
+            const ny = sepDy / sepDist;
+
+            const candAx = a.x - nx * overlap;
+            const candAy = a.y - ny * overlap;
+            const candBx = b.x + nx * overlap;
+            const candBy = b.y + ny * overlap;
+
+            const gA = grid.worldToGrid(candAx, candAy);
+            if (grid.isWalkable(gA.c, gA.r)) {
+              a.x = candAx;
+              a.y = candAy;
+            }
+            const gB = grid.worldToGrid(candBx, candBy);
+            if (grid.isWalkable(gB.c, gB.r)) {
+              b.x = candBx;
+              b.y = candBy;
+            }
+          }
+        }
+      }
+
+      // 3. Render High-Definition Vector Avatars in SVG Layer
+      for (let i = 0; i < shoppers.length; i++) {
+        const s = shoppers[i];
+        if (s.state === 'EXITED') continue;
 
         const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        g.setAttribute('transform', `translate(${s.x}, ${s.y})`);
+        g.setAttribute('class', 'shopper-agent');
+        g.setAttribute('transform', `translate(${s.x.toFixed(1)}, ${s.y.toFixed(1)})`);
 
+        const deg = (s.heading * 180 / Math.PI);
+        const rotG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        rotG.setAttribute('transform', `rotate(${deg.toFixed(1)})`);
+
+        // Directional Nose
+        const nose = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        nose.setAttribute('points', '7,-3.5 12,0 7,3.5');
+        nose.setAttribute('fill', s.color);
+        nose.setAttribute('stroke', '#ffffff');
+        nose.setAttribute('stroke-width', '1');
+        rotG.appendChild(nose);
+
+        // Body Avatar Circle
         const body = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        body.setAttribute('r', 8);
+        body.setAttribute('r', '7.5');
         body.setAttribute('fill', s.color);
         body.setAttribute('stroke', '#ffffff');
         body.setAttribute('stroke-width', '2');
-        g.appendChild(body);
+        rotG.appendChild(body);
 
+        // Center Head Dot
+        const headDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        headDot.setAttribute('r', '2.8');
+        headDot.setAttribute('fill', '#0f172a');
+        rotG.appendChild(headDot);
+
+        // Attached Cart (oriented in front)
         if (s.hasCart) {
-          const cartTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-          cartTxt.setAttribute('y', 3);
-          cartTxt.setAttribute('text-anchor', 'middle');
-          cartTxt.setAttribute('font-size', '8');
-          cartTxt.textContent = '🛒';
-          g.appendChild(cartTxt);
+          const cartG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          cartG.setAttribute('transform', 'translate(13, 0)');
+
+          const handle = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          handle.setAttribute('x1', '-2'); handle.setAttribute('y1', '-5');
+          handle.setAttribute('x2', '-2'); handle.setAttribute('y2', '5');
+          handle.setAttribute('stroke', '#94a3b8'); handle.setAttribute('stroke-width', '2');
+          cartG.appendChild(handle);
+
+          const basket = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          basket.setAttribute('x', '-1'); basket.setAttribute('y', '-6');
+          basket.setAttribute('width', '13'); basket.setAttribute('height', '12');
+          basket.setAttribute('rx', '2');
+          basket.setAttribute('fill', 'rgba(15, 23, 42, 0.75)');
+          basket.setAttribute('stroke', '#38bdf8');
+          basket.setAttribute('stroke-width', '1.2');
+          cartG.appendChild(basket);
+
+          // Render micro items collected in cart
+          const maxDots = Math.min(s.cartItems.length, 6);
+          for (let k = 0; k < maxDots; k++) {
+            const itemDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            itemDot.setAttribute('cx', `${2 + (k % 3) * 4}`);
+            itemDot.setAttribute('cy', `${-3 + Math.floor(k / 3) * 6}`);
+            itemDot.setAttribute('r', '1.6');
+            itemDot.setAttribute('fill', s.cartColors[k] || '#facc15');
+            cartG.appendChild(itemDot);
+          }
+          rotG.appendChild(cartG);
         } else if (s.hasBasket) {
-          const bskTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-          bskTxt.setAttribute('y', 3);
-          bskTxt.setAttribute('text-anchor', 'middle');
-          bskTxt.setAttribute('font-size', '8');
-          bskTxt.textContent = '🧺';
-          g.appendChild(bskTxt);
+          // Hand basket on side
+          const bskG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          bskG.setAttribute('transform', 'translate(0, 9)');
+          const bskRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          bskRect.setAttribute('x', '-4'); bskRect.setAttribute('y', '-3');
+          bskRect.setAttribute('width', '8'); bskRect.setAttribute('height', '6');
+          bskRect.setAttribute('rx', '1.5');
+          bskRect.setAttribute('fill', '#ef4444');
+          bskRect.setAttribute('stroke', '#ffffff');
+          bskRect.setAttribute('stroke-width', '1');
+          bskG.appendChild(bskRect);
+          rotG.appendChild(bskG);
+        }
+
+        g.appendChild(rotG);
+
+        // Floating Action Badge when Browsing or Paying
+        if (s.state === 'BROWSING' || s.state === 'PAYING') {
+          const badgeG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          badgeG.setAttribute('class', `shopper-badge ${s.state === 'PAYING' ? 'shopper-paying-glow' : ''}`);
+          badgeG.setAttribute('transform', 'translate(0, -18)');
+
+          const badgeBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          badgeBg.setAttribute('x', '-13');
+          badgeBg.setAttribute('y', '-9');
+          badgeBg.setAttribute('width', '26');
+          badgeBg.setAttribute('height', '16');
+          badgeBg.setAttribute('rx', '8');
+          badgeBg.setAttribute('fill', '#0f172a');
+          badgeBg.setAttribute('stroke', s.state === 'PAYING' ? '#22c55e' : '#facc15');
+          badgeBg.setAttribute('stroke-width', '1.5');
+          badgeG.appendChild(badgeBg);
+
+          const badgeTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          badgeTxt.setAttribute('y', '3');
+          badgeTxt.setAttribute('text-anchor', 'middle');
+          badgeTxt.setAttribute('font-size', '10');
+          badgeTxt.textContent = s.actionEmoji || '🛍️';
+          badgeG.appendChild(badgeTxt);
+
+          g.appendChild(badgeG);
         }
 
         layer.appendChild(g);
       }
 
+      // 4. Remove finished shoppers and spawn replacements
       for (let i = finished.length - 1; i >= 0; i--) {
         const idx = finished[i];
         const s = shoppers[idx];
@@ -2123,7 +2805,7 @@
         simStats.completed++;
         simStats.totalTime += parseInt(dwell);
         shoppers.splice(idx, 1);
-        spawnShopper(1500 + Math.random()*2000);
+        spawnShopper(1000 + Math.random() * 2500);
       }
 
       document.getElementById('sim-count').textContent = shoppers.length;
@@ -2740,6 +3422,7 @@
 
     // --- MAIN 2D RENDER ---
     function render2D() {
+      isNavGridDirty = true;
       perimLayer.innerHTML = '';
       archLayer.innerHTML = '';
       itemsLayer.innerHTML = '';
